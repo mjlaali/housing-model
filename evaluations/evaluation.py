@@ -84,7 +84,7 @@ class Evaluation:
 def main(eval_file_pattern):
     files = glob(eval_file_pattern)
     cleaned_rows = standardize_data(files)
-    examples = prepare_data(cleaned_rows)
+    examples, _ = prepare_data(cleaned_rows)
     evaluation = Evaluation(PercentageErrorRate, examples)
     model = HouseSigmaModel()
 

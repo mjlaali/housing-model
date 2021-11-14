@@ -1,4 +1,5 @@
 """tf_housing dataset."""
+import logging
 from datetime import datetime
 
 import tensorflow as tf
@@ -16,6 +17,8 @@ This data set contains housing features and its sold prices.
 _CITATION = """
 TBD
 """
+
+logger = logging.getLogger(__name__)
 
 
 class TfHousing(tfds.core.GeneratorBasedBuilder):
@@ -38,7 +41,7 @@ class TfHousing(tfds.core.GeneratorBasedBuilder):
                     "map/lon": tf.float32,
                     "land/front": tf.float32,
                     "land/depth": tf.float32,
-                    "date_start": tf.float32,
+                    "date_end": tf.float32,
                     "metadata": {"ml_num": tf.string},
                 }
             ),
@@ -50,34 +53,48 @@ class TfHousing(tfds.core.GeneratorBasedBuilder):
 
     def _split_generators(self, dl_manager: tfds.download.DownloadManager):
         """Returns SplitGenerators."""
-        path = dl_manager.download_and_extract(
-            "file:///Users/majid/git/housing/housing_data/data/test/dataset.zip"
+        paths = dl_manager.download_and_extract(
+            {
+                "train": [
+                    "file:///Users/majid/git/housing/housing_data/Y2019-sold.tar.gz"
+                ],
+                "test": [
+                    "file:///Users/majid/git/housing/housing_data/Y2019-sold.tar.gz"
+                ],
+            }
         )
 
         return {
-            "train": self._generate_examples(path / "train"),
-            "test": self._generate_examples(path / "test"),
+            "train": self._generate_examples(paths["train"]),
+            "test": self._generate_examples(paths["test"]),
         }
 
-    def _generate_examples(self, path):
+    def _generate_examples(self, paths):
         """Yields examples."""
-        files = path.glob("*/data.json")
+        for path in paths:
+            files = list(path.glob("*/data.json"))
 
-        cleaned_rows = standardize_data(files)
-        examples = prepare_data(cleaned_rows)
-        for ex in examples:
-            yield ex.ml_num, {
-                "sold_price": ex.sold_price,
-                "map/lat": ex.features.map_lat,
-                "map/lon": ex.features.map_lon,
-                "land/front": ex.features.land_front
-                or 1,  # Convert missing values to 1
-                "land/depth": ex.features.land_depth
-                or 1,  # Convert missing values to 1
-                "date_start": (
-                    ex.features.date_start - datetime(1970, 1, 1)
-                ).total_seconds()
-                // 3600
-                // 24,
-                "metadata": {"ml_num": ex.ml_num},
-            }
+            cleaned_rows = standardize_data(files)
+            examples, parser = prepare_data(cleaned_rows)
+            for ex in examples:
+                yield ex.ml_num, {
+                    "sold_price": ex.sold_price,
+                    "map/lat": ex.features.map_lat,
+                    "map/lon": ex.features.map_lon,
+                    "land/front": ex.features.land_front
+                    or 1,  # Convert missing values to 1
+                    "land/depth": ex.features.land_depth
+                    or 1,  # Convert missing values to 1
+                    "date_end": (
+                        ex.features.date_end - datetime(1970, 1, 1)
+                    ).total_seconds()
+                    // 3600
+                    // 24,
+                    "metadata": {"ml_num": ex.ml_num},
+                }
+
+            logger.info(
+                f"{parser.parsed_example} has been read from {str(files)}. "
+                f"{parser.err_cnt} examples have been filtered due to a parse error. "
+                f"{parser.err_cnt / max(parser.parsed_example + parser.err_cnt, 1):.2f}"
+            )

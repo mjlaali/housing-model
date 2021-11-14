@@ -63,7 +63,7 @@ class Features(DataClassJsonMixin):
     map_lon: float
     land_front: Optional[float]
     land_depth: Optional[float]
-    date_start: datetime
+    date_end: datetime
 
 
 class InvalidExample(RuntimeError):

@@ -1,7 +1,7 @@
 import json
 import logging
 from datetime import datetime
-from typing import Dict, Any, Iterable, Optional
+from typing import Dict, Any, Iterable, Optional, Tuple
 
 from housing_model.data.example import Example, Features, InvalidExample
 
@@ -38,8 +38,8 @@ class ExampleParser:
                     map_lon=standard_input.get("map/lon"),
                     land_front=standard_input.get("land/front"),
                     land_depth=standard_input.get("land/depth"),
-                    date_start=datetime.strptime(
-                        standard_input.get("date_start"), "%Y-%m-%d"
+                    date_end=datetime.strptime(
+                        standard_input.get("date_end"), "%Y-%m-%d"
                     ),
                 ),
                 sold_price=standard_input.get("price_sold_int"),
@@ -49,14 +49,24 @@ class ExampleParser:
             return example
         except (InvalidExample, ValueError, TypeError):
             self._err_cnt += 1
-            logger.exception(
-                f"Cannot parse:\n{json.dumps(standard_input, sort_keys=True, indent=2)}"
-            )
+            if 9 * self.err_cnt > self.parsed_example:
+                logger.exception(
+                    f"Cannot parse:\n{json.dumps(standard_input, sort_keys=True, indent=2)}"
+                )
+            else:
+                logger.debug(
+                    f"Cannot parse:\n{json.dumps(standard_input, sort_keys=True, indent=2)}",
+                    exc_info=True,
+                    stack_info=True,
+                )
+
             return None
 
 
-def prepare_data(standard_inputs: Iterable[Dict]) -> Iterable[Example]:
+def prepare_data(
+    standard_inputs: Iterable[Dict],
+) -> Tuple[Iterable[Example], ExampleParser]:
     parser = ExampleParser()
     examples = map(parser.parse, standard_inputs)
     examples = filter(lambda x: x, examples)
-    return examples
+    return examples, parser

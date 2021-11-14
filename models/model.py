@@ -11,8 +11,3 @@ class Model(ABC):
 
     def update(self, example: Example):
         pass
-
-
-class HouseSigmaModel(Model):
-    def predict(self, features: Features) -> Optional[float]:
-        return features.house_sigma_estimation

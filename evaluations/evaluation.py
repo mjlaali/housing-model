@@ -12,7 +12,8 @@ import numpy as np
 from housing_data.analysis.json_to_df import standardize_data
 from housing_model.data.data import Data, prepare_data
 from housing_model.data.example import Example
-from housing_model.models.model import Model, HouseSigmaModel
+from housing_model.models.model import Model
+from housing_model.models.baselines import HouseSigmaModel
 
 _logger = logging.getLogger(__name__)
 
@@ -51,12 +52,12 @@ class PercentageErrorRate(Metric):
     def value(self) -> dict:
         values = self.values
         return {
-            'cnt': len(values),
-            'mean': np.mean(values),
-            'med': np.median(values),
-            'var': np.std(values),
-            'recall': len(values) / self._total_cnt,
-            'outlier': self._outlier / self._total_cnt
+            "cnt": len(values),
+            "mean": np.mean(values),
+            "med": np.median(values),
+            "var": np.std(values),
+            "recall": len(values) / self._total_cnt,
+            "outlier": self._outlier / self._total_cnt,
         }
 
     @property
@@ -91,10 +92,10 @@ def main(eval_file_pattern):
     print(json.dumps(metrics.value, indent=2))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     parser = argparse.ArgumentParser()
-    parser.add_argument('eval_file_pattern')
+    parser.add_argument("eval_file_pattern")
 
     args = parser.parse_args()
     main(**vars(args))

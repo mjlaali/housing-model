@@ -59,7 +59,7 @@ class TfHousing(tfds.core.GeneratorBasedBuilder):
                     "file:///Users/majid/git/housing/housing_data/Y2019-sold.tar.gz"
                 ],
                 "test": [
-                    "file:///Users/majid/git/housing/housing_data/Y2019-sold.tar.gz"
+                    "file:///Users/majid/git/housing/housing_data/Y2020-sold.tar.gz"
                 ],
             }
         )

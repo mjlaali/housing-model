@@ -1,7 +1,7 @@
 import json
 import logging
 from datetime import datetime
-from typing import Dict, Any, Iterable, Optional, Tuple
+from typing import Dict, Any, Iterable, Optional, Tuple, Union
 
 from housing_model.data.example import Example, Features, InvalidExample
 
@@ -25,6 +25,11 @@ class ExampleParser:
         return self._parsed_examples
 
     def parse(self, standard_input: Dict[str, Any]) -> Optional[Example]:
+        def to_float(a_num: Optional[Union[int, float]]):
+            if a_num is not None:
+                return float(a_num)
+            return None
+
         try:
             house_sigma_estimation = standard_input.get("estimate_price")
             example = Example(
@@ -36,8 +41,8 @@ class ExampleParser:
                     else None,
                     map_lat=standard_input.get("map/lat"),
                     map_lon=standard_input.get("map/lon"),
-                    land_front=standard_input.get("land/front"),
-                    land_depth=standard_input.get("land/depth"),
+                    land_front=to_float(standard_input.get("land/front")),
+                    land_depth=to_float(standard_input.get("land/depth")),
                     date_end=datetime.strptime(
                         standard_input.get("date_end"), "%Y-%m-%d"
                     ),

@@ -12,7 +12,6 @@ _logger = logging.getLogger(__name__)
 
 
 class Transformation(abc.ABC):
-
     @abc.abstractmethod
     def analyze(self, raw: object) -> object:
         pass
@@ -35,11 +34,11 @@ class StatelessTransformation(Transformation, abc.ABC):
 
 class WhitespaceTokenizer(StatelessTransformation):
     def process(self, raw: str) -> list:
-        return raw.split(' ')
+        return raw.split(" ")
 
 
 class CategoricalFeature(Transformation):
-    UNK = 'unk'
+    UNK = "unk"
 
     def __init__(self, vocab_file, num_values):
         self._vocab_file = vocab_file
@@ -49,9 +48,11 @@ class CategoricalFeature(Transformation):
         if self._if_analyze:
             self._vocabs = Counter()
         else:
-            with open(self._vocab_file, 'rb') as fin:
+            with open(self._vocab_file, "rb") as fin:
                 self._vocabs = pickle.load(fin)
-            _logger.warning(f'The vocab file {vocab_file} already exist, hence, vocabs will not be computed again')
+            _logger.warning(
+                f"The vocab file {vocab_file} already exist, hence, vocabs will not be computed again"
+            )
 
     def analyze(self, raw: list) -> list:
         res = []
@@ -72,14 +73,16 @@ class CategoricalFeature(Transformation):
 
     def save(self):
         if self._if_analyze:
-            with open(self._vocab_file, 'wb') as fout:
+            with open(self._vocab_file, "wb") as fout:
                 pickle.dump(self._vocabs, fout)
         total_tokens = sum(self._vocabs.values())
         considered_token = 0
         for token, freq in self._vocabs.most_common(self._num_values):
             considered_token += freq
             self._token_id[token] = len(self._token_id)
-        _logger.info(f'{self._vocab_file} covers {considered_token/total_tokens:.2f} of tokens.')
+        _logger.info(
+            f"{self._vocab_file} covers {considered_token/total_tokens:.2f} of tokens."
+        )
 
 
 class ToList(StatelessTransformation):
@@ -130,7 +133,7 @@ class PositionEncoder(StatelessTransformation):
 class Encoder(object):
     def __init__(self, transformations: List[Transformation], dtype: str, dim: int):
         self._transformations = transformations
-        self._mode = 'analyze'
+        self._mode = "analyze"
         self._dtype = dtype
         self._dim = dim
 
@@ -142,20 +145,22 @@ class Encoder(object):
             op = getattr(a_transformation, self._mode)
             out_val = op(in_val)
             if out_val is None:
-                raise ValueError(f'{type(a_transformation)} generates None value for {in_val}')
+                raise ValueError(
+                    f"{type(a_transformation)} generates None value for {in_val}"
+                )
             in_val = out_val
 
         try:
             feature_value = np.asarray(out_val, dtype=self._dtype)
         except TypeError as e:
-            raise ValueError(f'{out_val} is not compatible with {self._dtype}') from e
+            raise ValueError(f"{out_val} is not compatible with {self._dtype}") from e
         assert len(feature_value.shape) == self._dim
         return feature_value
 
     def save(self):
         for a_transformation in self._transformations:
             a_transformation.save()
-        self._mode = 'process'
+        self._mode = "process"
 
     @property
     def dtype(self):

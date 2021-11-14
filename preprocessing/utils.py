@@ -21,7 +21,7 @@ def feature_factory(dtype):
         return lambda v: tf.train.Feature(float_list=tf.train.FloatList(value=v))
     if np.issubdtype(dtype, np.str_):
         return str_feature
-    raise ValueError(f'{dtype} is not supported')
+    raise ValueError(f"{dtype} is not supported")
 
 
 def to_example(dictionary):
@@ -43,15 +43,12 @@ def sharded_name(base_name, shard, total_shards):
     return "%s-%.5d-of-%.5d" % (base_name, shard, total_shards)
 
 
-def generate_files_distributed(generator,
-                               output_name,
-                               output_dir,
-                               num_shards=1,
-                               max_cases=None,
-                               task_id=0):
+def generate_files_distributed(
+    generator, output_name, output_dir, num_shards=1, max_cases=None, task_id=0
+):
     """
-        generate_files but with a single writer writing to shard task_id.
-        Copied from tensor2tensor github repository
+    generate_files but with a single writer writing to shard task_id.
+    Copied from tensor2tensor github repository
     """
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)

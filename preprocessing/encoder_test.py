@@ -2,26 +2,32 @@ import tempfile
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
-from housing_model.preprocessing.encoder import WhitespaceTokenizer, CategoricalFeature, PositionEncoder, Encoder
+from housing_model.preprocessing.encoder import (
+    WhitespaceTokenizer,
+    CategoricalFeature,
+    PositionEncoder,
+    Encoder,
+)
 import numpy as np
+
 
 class TestWhitespaceTokenizer(TestCase):
     def test_tokenize(self):
         tokenizer = WhitespaceTokenizer()
-        res = tokenizer.analyze('it is a test')
-        assert res == ['it', 'is', 'a', 'test']
+        res = tokenizer.analyze("it is a test")
+        assert res == ["it", "is", "a", "test"]
 
 
 class TestCategoricalFeature(TestCase):
     def test_analyze(self):
         with tempfile.NamedTemporaryFile() as tmp_file:
-            with patch('os.path.exists', lambda x: False):
+            with patch("os.path.exists", lambda x: False):
                 transformation = CategoricalFeature(tmp_file.name, 10)
-            transformation.analyze(['a', 'a', 'a', 'b', 'b', 'c'])
+            transformation.analyze(["a", "a", "a", "b", "b", "c"])
             pickle_dump = MagicMock()
-            with patch('pickle.dump', pickle_dump):
+            with patch("pickle.dump", pickle_dump):
                 transformation.save()
-            res = transformation.process(['a', 'b', 'c'])
+            res = transformation.process(["a", "b", "c"])
             assert len(res) == 3
             assert res == [1, 2, 3]
 
@@ -41,8 +47,8 @@ class TestEncoder(TestCase):
         transformation.process = MagicMock(return_value=[2, 2, 2])
         transformation.save = MagicMock()
 
-        encoder = Encoder([transformation], 'int32', 1)
-        raw_input = 'dummy'
+        encoder = Encoder([transformation], "int32", 1)
+        raw_input = "dummy"
         res = encoder(raw_input)
         assert all(res == [1, 1, 1])
 

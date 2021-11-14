@@ -110,5 +110,5 @@ def test_get_features():
         a_listing = json.loads(a_sample)
         features = get_features(a_listing, feature_template)
         assert len(features) == 23
-        assert 'ml_num' in features
-        assert features['ml_num'] == [a_listing['ml_num']]
+        assert "ml_num" in features
+        assert features["ml_num"] == [a_listing["ml_num"]]

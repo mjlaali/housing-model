@@ -5,9 +5,9 @@ import numpy as np
 
 def test_to_example():
     features = {
-        'int': np.asarray([1, 2, 3], dtype=np.int32),
-        'float': np.asarray([1.0, 2.0, 3.0], dtype=np.float32),
-        'string': ['a', 'b', 'c']
+        "int": np.asarray([1, 2, 3], dtype=np.int32),
+        "float": np.asarray([1.0, 2.0, 3.0], dtype=np.float32),
+        "string": ["a", "b", "c"],
     }
 
     example = to_example(features)

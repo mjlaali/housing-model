@@ -84,7 +84,7 @@ def test_train():
     keras_model = KerasModel.build(model_builder, train_ds)
     test_ds = keras_model.setup_data(train_ds.take(1), batch_size=1)
 
-    keras_model.train(TrainParams(batch_size=3, epochs=500, learning_rate=1e-1))
+    keras_model.train(TrainParams(batch_size=3, epochs=5000, learning_rate=1e-1))
     output = keras_model._model.predict(test_ds.map(lambda x, y: x))
     for idx, (_, expected) in enumerate(test_ds):
         for k, v in expected.items():
@@ -95,6 +95,7 @@ def test_train():
         # print(f'bits:\n{output[0][idx]}')
 
     #pprint(output)
+    assert False
 
     #keras_model.train(TrainParams(batch_size=3, epochs=1000, learning_rate=1e-1))
     #run_debug_job(keras_model, model_builder, test_ds)

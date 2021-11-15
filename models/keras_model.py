@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Optional, Set
 
 import tensorflow as tf
@@ -134,7 +135,7 @@ class KerasModel(Model):
         self._num_bits = num_bits
 
     def setup_data(self, tf_data: tf.data.Dataset, batch_size: int):
-        return tf_data.map(
+        data = tf_data.map(
             lambda ex: (
                 {f_name: ex[f_name] for f_name in self._input_features},
                 {
@@ -142,9 +143,13 @@ class KerasModel(Model):
                     'bits': num_to_bits(ex[self._price_feature_name], self._num_bits)
                 }
             )
-        ).batch(batch_size)
+        )
+        if batch_size > 0:
+            return data.batch(batch_size)
+        return data
 
-    def train(self, params: TrainParams):
+    def train(self, params: TrainParams) -> tf.keras.callbacks.History:
+
         self._model.compile(
             optimizer=tf.keras.optimizers.Adam(learning_rate=params.learning_rate),
             loss={
@@ -153,9 +158,13 @@ class KerasModel(Model):
             }
         )
 
-        self._model.fit(
+        logdir = "logs/scalars/" + datetime.now().strftime("%Y%m%d-%H%M%S")
+        tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=logdir)
+
+        return self._model.fit(
             self.setup_data(self._train_ds, params.batch_size),
-            epochs=params.epochs
+            epochs=params.epochs,
+            callbacks=[tensorboard_callback]
         )
 
     def predict(self, features: Features) -> Optional[float]:

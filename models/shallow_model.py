@@ -21,20 +21,21 @@ class ModelBuilder:
     def build(self) -> tf.keras:
         inputs = []
         input_features = []
-        input_embeddings = {}
 
         for feature in self._float_features:
             an_input = tf.keras.layers.Input(name=feature, shape=(), dtype='float32')
             inputs.append(an_input)
             expanded_input = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=-1))(an_input)
-            # TODO: add an_input as an one of embedding to the input
             input_embedding = tf.keras.layers.Dense(
                 units=self._params.embedding_size,
                 activation=tf.math.sin,
                 kernel_initializer='random_normal',
                 name=f'to_embedding_{feature}'
             )(expanded_input)
-            input_embeddings[f'embdedding_{feature}'] = input_embedding
+            input_embedding = tf.keras.layers.Lambda(
+                lambda x: tf.concat(x, axis=-1)
+            )((input_embedding, expanded_input))
+
             input_feature = tf.keras.layers.Dense(
                 units=self._params.embedding_size, activation='selu', name=f'to_feature_{feature}'
             )(input_embedding)
@@ -50,7 +51,6 @@ class ModelBuilder:
             lambda batch_prices: tf.squeeze(batch_prices, axis=-1), name='sold_price'
         )(sold_price)
 
-        input_embeddings['sold_price'] = predictions
         return tf.keras.Model(
             inputs=inputs,
             outputs={'sold_price': predictions}

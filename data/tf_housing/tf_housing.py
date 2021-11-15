@@ -1,12 +1,14 @@
 """tf_housing dataset."""
 import logging
 from datetime import datetime
+from typing import Tuple, Dict, Any
 
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
 from housing_data_generator.utils import standardize_data
 from housing_model.data.data import prepare_data
+from housing_model.data.example import Example
 
 _DESCRIPTION = """
 **Housing Data Set**
@@ -60,13 +62,30 @@ class TfHousing(tfds.core.GeneratorBasedBuilder):
                 ],
                 "test": [
                     "file:///Users/majid/git/housing/housing_data/Y2020-sold.tar.gz"
-                ],
+                ]
             }
         )
 
         return {
-            "train": self._generate_examples(paths["train"]),
-            "test": self._generate_examples(paths["test"]),
+            split: self._generate_examples(paths[split]) for split in ("train", "test", "dummy")
+        }
+
+    @staticmethod
+    def to_features(ex: Example) -> Tuple[str, Dict[str, Any]]:
+        return ex.ml_num, {
+            "sold_price": ex.sold_price,
+            "map/lat": ex.features.map_lat,
+            "map/lon": ex.features.map_lon,
+            "land/front": ex.features.land_front
+                          or 1,  # Convert missing values to 1
+            "land/depth": ex.features.land_depth
+                          or 1,  # Convert missing values to 1
+            "date_end": (
+                                ex.features.date_end - datetime(1970, 1, 1)
+                        ).total_seconds()
+                        // 3600
+                        // 24,
+            "metadata": {"ml_num": ex.ml_num},
         }
 
     def _generate_examples(self, paths):
@@ -77,22 +96,7 @@ class TfHousing(tfds.core.GeneratorBasedBuilder):
             cleaned_rows = standardize_data(files)
             examples, parser = prepare_data(cleaned_rows)
             for ex in examples:
-                yield ex.ml_num, {
-                    "sold_price": ex.sold_price,
-                    "map/lat": ex.features.map_lat,
-                    "map/lon": ex.features.map_lon,
-                    "land/front": ex.features.land_front
-                    or 1,  # Convert missing values to 1
-                    "land/depth": ex.features.land_depth
-                    or 1,  # Convert missing values to 1
-                    "date_end": (
-                        ex.features.date_end - datetime(1970, 1, 1)
-                    ).total_seconds()
-                    // 3600
-                    // 24,
-                    "metadata": {"ml_num": ex.ml_num},
-                }
-
+                yield self.to_features(ex)
             logger.info(
                 f"{parser.parsed_example} has been read from {str(files)}. "
                 f"{parser.err_cnt} examples have been filtered due to a parse error. "

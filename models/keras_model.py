@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from dataclasses_json import DataClassJsonMixin
 from datetime import datetime
 from typing import Optional, Set
 
@@ -38,7 +39,7 @@ def num_to_bits(num, num_bits):
 
 
 @dataclass
-class ModelBuilder:
+class ModelBuilder(DataClassJsonMixin):
     params: ModelParams
     debug_mode: Optional[bool] = None
     num_bits: int = 32
@@ -76,9 +77,9 @@ class ModelBuilder:
         else:
             features = input_features[0]
 
-        sold_price_bits = tf.keras.layers.Dense(units=self.num_bits, activation='sigmoid', name='sold_price')(features)
+        sold_price_bits = tf.keras.layers.Dense(units=self.num_bits, activation='sigmoid', name='bits')(features)
         sold_price = tf.keras.layers.Lambda(
-            lambda bits: bits_to_num(bits, self.num_bits), name='bits'
+            lambda bits: bits_to_num(bits, self.num_bits), name='sold_price'
         )(sold_price_bits)
 
         # sold_price = tf.keras.layers.Dense(units=1, activation=None, name='dense_price')(features)
@@ -149,12 +150,16 @@ class KerasModel(Model):
         return data
 
     def train(self, params: TrainParams) -> tf.keras.callbacks.History:
-
+        alpha = 0.0001
         self._model.compile(
             optimizer=tf.keras.optimizers.Adam(learning_rate=params.learning_rate),
             loss={
-                #'sold_price': tf.keras.losses.MeanSquaredError(),
+                'sold_price': tf.keras.losses.MeanSquaredLogarithmicError(),
                 'bits': tf.keras.losses.BinaryCrossentropy()
+            },
+            loss_weights={
+                'sold_price': 1 - alpha,
+                'bits': alpha
             }
         )
 

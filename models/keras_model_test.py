@@ -81,24 +81,10 @@ def test_train():
     train_ds = tfds.load('tf_housing', split='train').take(6).cache()
 
     model_builder = ModelBuilder(ModelParams(embedding_size=20))
-    keras_model = KerasModel.build(model_builder, train_ds)
-    test_ds = keras_model.setup_data(train_ds.take(1), batch_size=1)
+    keras_model = KerasModel.build(model_builder, train_ds)    
 
-    keras_model.train(TrainParams(batch_size=3, epochs=5000, learning_rate=1e-1))
-    output = keras_model._model.predict(test_ds.map(lambda x, y: x))
-    for idx, (_, expected) in enumerate(test_ds):
-        for k, v in expected.items():
-            print(f'{k}:\n{v}\n')
-        print(f'expected: {expected["sold_price"]}\nres:\n{output[1][idx]}')
-        for expected_bits, res_bit in zip(expected["bits"][0], output[0][idx]):
-            print(f'{expected_bits} - {res_bit}')
-        # print(f'bits:\n{output[0][idx]}')
-
-    #pprint(output)
-    assert False
-
-    #keras_model.train(TrainParams(batch_size=3, epochs=1000, learning_rate=1e-1))
-    #run_debug_job(keras_model, model_builder, test_ds)
+    hist = keras_model.train(TrainParams(batch_size=6, epochs=2000, learning_rate=1e-1))
+    assert hist.history['loss'[-1]] < 1e-3
 
 
 def run_debug_job(keras_model, model_builder, test_ds):

@@ -1,6 +1,7 @@
 """tf_housing dataset."""
 import logging
 from datetime import datetime
+import os
 from typing import Tuple, Dict, Any
 
 import tensorflow as tf
@@ -53,21 +54,27 @@ class TfHousing(tfds.core.GeneratorBasedBuilder):
             citation=_CITATION,
         )
 
+    def _get_housing_data_dir(self):
+        #window = file:///Users/majid/git/housing/
+        housing_dir = f"{os.path.dirname(__file__)}/../../../housing_data" 
+        return os.path.abspath(housing_dir)
+    
     def _split_generators(self, dl_manager: tfds.download.DownloadManager):
         """Returns SplitGenerators."""
+        
         paths = dl_manager.download_and_extract(
             {
                 "train": [
-                    "file:///Users/majid/git/housing/housing_data/Y2019-sold.tar.gz"
+                    f"{self._get_housing_data_dir()}/Y2019-sold.tar.gz"
                 ],
                 "test": [
-                    "file:///Users/majid/git/housing/housing_data/Y2020-sold.tar.gz"
+                    f"{self._get_housing_data_dir()}/Y2020-sold.tar.gz"
                 ]
             }
         )
 
         return {
-            split: self._generate_examples(paths[split]) for split in ("train", "test", "dummy")
+            split: self._generate_examples(paths[split]) for split in ("train", "test")
         }
 
     @staticmethod

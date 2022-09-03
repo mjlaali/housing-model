@@ -193,6 +193,10 @@ class KerasModelTrainer:
             loss={
                 arc_params.price_feature_name: tf.keras.losses.MeanSquaredLogarithmicError(),
                 arc_params.bits_feature_name: tf.keras.losses.BinaryCrossentropy()
+            },
+            loss_weights={
+                arc_params.price_feature_name: 0.99,
+                arc_params.bits_feature_name: 0.01
             }
         )
 

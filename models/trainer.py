@@ -57,8 +57,8 @@ def main(model_params_path: str, model_path: str):
     metric = eval_model_on_tfds(train_ds.take(ex_cnt).cache(), predictor)
     print(json.dumps(metric.value, indent=2, sort_keys=True))
 
-    assert metric.value["mean"] < 0.01, "The mean percentage error is too high"
-    assert overfit_loss < 1e-3, "The model did not overfit!"
+    assert metric.value["mean"] < 0.01, f"The mean percentage error ({metric.value['mean']}) is too high"
+    assert overfit_loss < 1e-3, f"The model did not overfit! loss ({overfit_loss}) is too high"
 
 
 if __name__ == '__main__':

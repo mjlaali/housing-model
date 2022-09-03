@@ -12,8 +12,8 @@ import numpy as np
 from housing_data.analysis.json_to_df import standardize_data
 from housing_model.data.data import Data, prepare_data
 from housing_model.data.example import Example
-from housing_model.models.model import Model
-from housing_model.models.baselines import HouseSigmaModel
+from housing_model.models.house_price_predictor import HousePricePredictor
+from housing_model.models.baselines import HouseSigmaHousePricePredictor
 
 _logger = logging.getLogger(__name__)
 
@@ -71,7 +71,7 @@ class Evaluation:
         self._eval_data = eval_data
         self._metric_values = defaultdict(list)
 
-    def eval(self, model: Model):
+    def eval(self, model: HousePricePredictor) -> Metric:
         metric = self._metric_factory()
         for example in self._eval_data:
             prediction = model.predict(example.features)
@@ -86,7 +86,7 @@ def main(eval_file_pattern):
     cleaned_rows = standardize_data(files)
     examples, _ = prepare_data(cleaned_rows)
     evaluation = Evaluation(PercentageErrorRate, examples)
-    model = HouseSigmaModel()
+    model = HouseSigmaHousePricePredictor()
 
     metrics = evaluation.eval(model)
     print(json.dumps(metrics.value, indent=2))

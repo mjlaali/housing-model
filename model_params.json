@@ -1,0 +1,9 @@
+{
+  "hyper_params": {"embedding_size": 128},
+  "arc_params": {
+    "float_features": ["map/lat", "map/lon", "land/front", "land/depth", "date_end"],
+    "num_bits": 32,
+    "price_feature_name": "sold_price",
+    "bits_feature_name": "bits"
+  }
+}

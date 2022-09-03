@@ -1,9 +1,9 @@
 from typing import Optional
 
 from housing_model.data.example import Features
-from housing_model.models.model import Model
+from housing_model.models.house_price_predictor import HousePricePredictor
 
 
-class HouseSigmaModel(Model):
+class HouseSigmaHousePricePredictor(HousePricePredictor):
     def predict(self, features: Features) -> Optional[float]:
         return features.house_sigma_estimation

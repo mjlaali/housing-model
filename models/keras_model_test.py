@@ -4,8 +4,10 @@ from pprint import pprint
 import tensorflow as tf
 import tensorflow_datasets as tfds
 import numpy as np
+import trainer
 
-from housing_model.models.keras_model import ModelBuilder, ModelParams, KerasModel, TrainParams, bits_to_num
+from housing_model.models.keras_model import ModelBuilder, HyperParams, TrainParams, bits_to_num, ArchitectureParams, \
+    KerasModelTrainer, ModelParams
 
 
 def test_bits_to_num():
@@ -19,20 +21,26 @@ def test_bits_to_num():
 
 def test_model_builder_input_output():
     model_builder = ModelBuilder(
-        ModelParams(embedding_size=5)
+        ModelParams(
+            HyperParams(embedding_size=5),
+            ArchitectureParams({'f1', 'f2'})
+        )
     )
 
-    model = model_builder.build({'f1', 'f2'})
+    model = model_builder.build()
     assert len(model.inputs) == 2
     assert len(model.outputs) == 2
 
 
 def test_model_builder_generate_price():
     model_builder = ModelBuilder(
-        ModelParams(embedding_size=5)
+        ModelParams(
+            HyperParams(embedding_size=5),
+            ArchitectureParams({'f1', 'f2'})
+        )
     )
 
-    model = model_builder.build({'f1', 'f2'})
+    model = model_builder.build()
     f1 = tf.constant([1.0])
     f2 = tf.constant([2.0])
 
@@ -50,13 +58,19 @@ def test_model_builder_generate_price():
 def test_model_overfit():
     num_bits = 3
     model_builder = ModelBuilder(
-        ModelParams(embedding_size=5), num_bits=num_bits
+        ModelParams(
+            HyperParams(embedding_size=5),
+            ArchitectureParams(
+                {'f1', 'f2'},
+                num_bits=num_bits
+            )
+        )
     )
 
-    model = model_builder.build({'f1', 'f2'})
+    model = model_builder.build()
     model.compile(
         optimizer=tf.keras.optimizers.Adam(
-            learning_rate=1e-2,
+            learning_rate=1e-1,
             clipnorm=1.0
         ),
         loss={
@@ -77,14 +91,17 @@ def test_model_overfit():
     assert hist.history['loss'][-1] < 1e-3
 
 
-def test_train():
-    train_ds = tfds.load('tf_housing', split='train').take(6).cache()
+def test_overfit():
+    train_ds = tfds.load('tf_housing', split='train')
 
-    model_builder = ModelBuilder(ModelParams(embedding_size=20))
-    keras_model = KerasModel.build(model_builder, train_ds)    
+    keras_model = KerasModelTrainer.build(ModelParams(
+            HyperParams(embedding_size=20),
+            ArchitectureParams.from_dataset(train_ds)
+        )
+    )
 
-    hist = keras_model.train(TrainParams(batch_size=6, epochs=2000, learning_rate=1e-1))
-    assert hist.history['loss'[-1]] < 1e-3
+    loss = trainer.get_overfit_loss(train_ds, keras_model)
+    assert loss < 1e-3
 
 
 def run_debug_job(keras_model, model_builder, test_ds):

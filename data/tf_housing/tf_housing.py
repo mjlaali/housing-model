@@ -79,6 +79,11 @@ class TfHousing(tfds.core.GeneratorBasedBuilder):
 
     @staticmethod
     def to_features(ex: Example) -> Tuple[str, Dict[str, Any]]:
+        """
+        parse an example and generate a list of features
+        :param ex: The input example
+        :return: A tuple of example_id (i.e. MLNum) and a dict of its features
+        """
         return ex.ml_num, {
             "sold_price": ex.sold_price,
             "map/lat": ex.features.map_lat,

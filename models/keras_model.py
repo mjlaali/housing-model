@@ -32,12 +32,21 @@ class ArchitectureParams(DataClassJsonMixin):
         return ArchitectureParams(input_features)
 
 
+@dataclass
+class EarlyStoppingSetting(DataClassJsonMixin):
+    min_delta: float = 0
+    patience: int = 100
+    verbose: int = 0
+    mode: str = 'auto'
+    restore_best_weights: bool = True
+
 
 @dataclass
-class TrainParams:
+class TrainParams(DataClassJsonMixin):
     batch_size: int
     epochs: int
     learning_rate: float
+    early_stopping: EarlyStoppingSetting = EarlyStoppingSetting()
 
 
 def bits_to_num(bits, num_bits):
@@ -185,7 +194,10 @@ class KerasModelTrainer:
     model_params: ModelParams  # This is a redundant and added to ease saving the model configs
     keras_model: Optional[tf.keras.Model] = None
 
-    def fit_model(self, train_ds: tf.data.Dataset, train_params: TrainParams) -> tf.keras.callbacks.History:
+    def fit_model(self,
+                  train_ds: tf.data.Dataset,
+                  dev_ds: tf.data.Dataset,
+                  train_params: TrainParams) -> tf.keras.callbacks.History:
         keras_model = self.model_builder.build()
         arc_params = self.model_builder.model_params.arc_params
         keras_model.compile(
@@ -200,12 +212,18 @@ class KerasModelTrainer:
             }
         )
 
+        callbacks = []
         logdir = "logs/scalars/" + datetime.now().strftime("%Y%m%d-%H%M%S")
-        tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=logdir)
+        callbacks.append(tf.keras.callbacks.TensorBoard(log_dir=logdir))
+
+        early_stopping_settings = train_params.early_stopping.to_dict()
+        early_stopping_settings["monitor"] = f"{arc_params.price_feature_name}_loss"
+        callbacks.append(tf.keras.callbacks.EarlyStopping(**early_stopping_settings))
+
         hist = keras_model.fit(
             self.data_provider.setup_data(train_ds, train_params.batch_size),
             epochs=train_params.epochs,
-            callbacks=[tensorboard_callback]
+            callbacks=callbacks
         )
         self.keras_model = keras_model
         return hist

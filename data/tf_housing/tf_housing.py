@@ -10,6 +10,8 @@ import tensorflow_datasets as tfds
 from housing_data_generator.utils import standardize_data
 from housing_model.data.data import prepare_data
 from housing_model.data.example import Example
+from housing_model.data.tf_housing.feature_names import SOLD_PRICE, MAP_LAT, MAP_LON, LAND_FRONT, LAND_DEPTH, DATE_END, \
+    METADATA, ML_NUM
 
 _DESCRIPTION = """
 **Housing Data Set**
@@ -55,17 +57,20 @@ class TfHousing(tfds.core.GeneratorBasedBuilder):
         )
 
     def _get_housing_data_dir(self):
-        #window = file:///Users/majid/git/housing/
-        housing_dir = f"{os.path.dirname(__file__)}/../../../housing_data" 
+        # window = file:///Users/majid/git/housing/
+        housing_dir = os.getenv("DATASET_DIR", f"{os.path.dirname(__file__)}/../../../housing_data")
         return os.path.abspath(housing_dir)
-    
+
     def _split_generators(self, dl_manager: tfds.download.DownloadManager):
         """Returns SplitGenerators."""
-        
+
         paths = dl_manager.download_and_extract(
             {
                 "train": [
                     f"{self._get_housing_data_dir()}/Y2019-sold.tar.gz"
+                ],
+                "dev": [
+                    f"{self._get_housing_data_dir()}/Y2018-sold.tar.gz"
                 ],
                 "test": [
                     f"{self._get_housing_data_dir()}/Y2020-sold.tar.gz"
@@ -85,19 +90,17 @@ class TfHousing(tfds.core.GeneratorBasedBuilder):
         :return: A tuple of example_id (i.e. MLNum) and a dict of its features
         """
         return ex.ml_num, {
-            "sold_price": ex.sold_price,
-            "map/lat": ex.features.map_lat,
-            "map/lon": ex.features.map_lon,
-            "land/front": ex.features.land_front
-                          or 1,  # Convert missing values to 1
-            "land/depth": ex.features.land_depth
-                          or 1,  # Convert missing values to 1
-            "date_end": (
-                                ex.features.date_end - datetime(1970, 1, 1)
-                        ).total_seconds()
-                        // 3600
-                        // 24,
-            "metadata": {"ml_num": ex.ml_num},
+            SOLD_PRICE: ex.sold_price,
+            MAP_LAT: ex.features.map_lat,
+            MAP_LON: ex.features.map_lon,
+            LAND_FRONT: ex.features.land_front
+                        or 1,  # Convert missing values to 1
+            LAND_DEPTH: ex.features.land_depth
+                        or 1,  # Convert missing values to 1
+            DATE_END: (
+                              ex.features.date_end - datetime(1970, 1, 1)
+                      ).total_seconds() // 3600 // 24,
+            METADATA: {ML_NUM: ex.ml_num},
         }
 
     def _generate_examples(self, paths):

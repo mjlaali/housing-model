@@ -1,12 +1,12 @@
 from collections import OrderedDict
 from pprint import pprint
 
+import numpy as np
 import tensorflow as tf
 import tensorflow_datasets as tfds
-import numpy as np
-import trainer
 
-from housing_model.models.keras_model import ModelBuilder, HyperParams, TrainParams, bits_to_num, ArchitectureParams, \
+from housing_model.models import trainer
+from housing_model.models.keras_model import ModelBuilder, HyperParams, bits_to_num, ArchitectureParams, \
     KerasModelTrainer, ModelParams
 
 
@@ -92,7 +92,7 @@ def test_model_overfit():
 
 
 def test_overfit():
-    train_ds = tfds.load('tf_housing', split='train')
+    train_ds = tfds.load('tf_housing', split='train').take(4).cache()
 
     keras_model = KerasModelTrainer.build(ModelParams(
             HyperParams(embedding_size=20),

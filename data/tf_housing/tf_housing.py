@@ -79,7 +79,7 @@ class TfHousing(tfds.core.GeneratorBasedBuilder):
         )
 
         return {
-            split: self._generate_examples(paths[split]) for split in ("train", "test")
+            split: self._generate_examples(paths[split]) for split in ("train", "test", "dev")
         }
 
     @staticmethod

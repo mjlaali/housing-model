@@ -222,6 +222,7 @@ class KerasModelTrainer:
 
         hist = keras_model.fit(
             self.data_provider.setup_data(train_ds, train_params.batch_size),
+            validation_data=self.data_provider.setup_data(dev_ds, train_params.batch_size),
             epochs=train_params.epochs,
             callbacks=callbacks
         )

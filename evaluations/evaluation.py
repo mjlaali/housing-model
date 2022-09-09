@@ -52,12 +52,14 @@ class PercentageErrorRate(Metric):
     def value(self) -> dict:
         values = self.values
         return {
-            "cnt": len(values),
+            "cnt": self._total_cnt,
             "mean": np.mean(values),
             "med": np.median(values),
             "var": np.std(values),
-            "recall": len(values) / self._total_cnt,
-            "outlier": self._outlier / self._total_cnt,
+            "outlier_cnt": self._outlier,
+            "in_range_cnt": len(values),
+            "in_range_rate": len(values) / self._total_cnt,
+            "outlier_rate": self._outlier / self._total_cnt,
         }
 
     @property

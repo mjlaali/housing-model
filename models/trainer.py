@@ -13,15 +13,12 @@ from housing_model.models.house_price_predictor import HousePricePredictor
 from housing_model.models.keras_model import KerasModelTrainer, TrainParams, ModelParams, EarlyStoppingSetting
 
 
-def get_overfit_loss(train_ds: tf.data.Dataset, keras_model: KerasModelTrainer) -> float:
+def get_overfit_loss(train_ds: tf.data.Dataset, keras_model: KerasModelTrainer, overfit_train_params: TrainParams) -> float:
     dataset_size = len(list(train_ds))
     hist = keras_model.fit_model(
         train_ds,
         train_ds.take(dataset_size).cache(),
-        TrainParams(
-            batch_size=dataset_size, epochs=500, learning_rate=1e-2,
-            early_stopping=EarlyStoppingSetting(patience=500)
-        ),
+        overfit_train_params,
     )
     return hist.history['loss'][-1]
 
@@ -47,14 +44,17 @@ def eval_model_on_tfds(eval_data: tf.data.Dataset, model: HousePricePredictor) -
     return metrics
 
 
-def main(model_params_path: str, model_path: str, train_params_path):
+def main(model_params_path: str, model_path: str, train_params_path: str, overfit_train_params_path: str):
     train_ds = tfds.load('tf_housing', split='train')
 
     with open(model_params_path) as fin:
         model_params = ModelParams.from_json(fin.read())
 
+    with open(overfit_train_params_path) as fin:
+        overfit_train_params = TrainParams.from_json(fin.read())
+
     # check the model architecture does not have any error
-    check_model_architecture(model_params, model_path, train_ds)
+    check_model_architecture(model_params, model_path, train_ds, overfit_train_params)
     shutil.rmtree(model_path)
 
     # start training job and export the model
@@ -72,14 +72,16 @@ def main(model_params_path: str, model_path: str, train_params_path):
     print(json.dumps(metrics.value, indent=2, sort_keys=True))
 
 
-def check_model_architecture(model_params, model_path, train_ds):
-    ex_cnt = 4
+def check_model_architecture(
+        model_params: ModelParams, model_path: str, train_ds: tf.data.Dataset, overfit_train_params: TrainParams
+):
+    ex_cnt = overfit_train_params.batch_size
     train_ds = train_ds.take(ex_cnt).cache()
     test_ds = train_ds.take(ex_cnt).cache()
 
     keras_model = KerasModelTrainer.build(model_params)
 
-    overfit_loss = get_overfit_loss(train_ds, keras_model)
+    overfit_loss = get_overfit_loss(train_ds, keras_model, overfit_train_params)
 
     keras_model.save(model_path)
     # keras_model = KerasModelTrainer.load(model_path)
@@ -96,6 +98,7 @@ if __name__ == '__main__':
     parser.add_argument("--model_params_path", required=True)
     parser.add_argument("--train_params_path", required=True)
     parser.add_argument("--model_path", required=True)
+    parser.add_argument("--overfit_train_params_path", required=True)
 
     args = parser.parse_args()
 

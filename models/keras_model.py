@@ -15,6 +15,8 @@ from housing_model.models.house_price_predictor import HousePricePredictor
 @dataclass
 class HyperParams(DataClassJsonMixin):
     embedding_size: int
+    num_dense: int
+    bit_loss_weight: float
 
 
 @dataclass
@@ -98,19 +100,27 @@ class ModelBuilder(DataClassJsonMixin):
                 units=self.model_params.hyper_params.embedding_size, activation='relu', name=f'to_feature_l1_{feature}'
             )(input_embedding)
 
-            complete_features = tf.keras.layers.Lambda(
-                lambda x: tf.concat(x, axis=-1), name=f"embedding_with_original_{feature}"
-            )((input_feature, expanded_input))
+            # complete_features = tf.keras.layers.Lambda(
+            #     lambda x: tf.concat(x, axis=-1), name=f"embedding_with_original_{feature}"
+            # )((input_feature, expanded_input))
 
             complete_features = tf.keras.layers.Dense(
                 units=self.model_params.hyper_params.embedding_size, activation='relu', name=f'to_feature_l2_{feature}'
-            )(complete_features)
+            )(input_feature)
             input_features.append(complete_features)
 
         if len(input_features) > 1:
             features = tf.keras.layers.Add(name="feature_aggregation")(input_features)
         else:
             features = input_features[0]
+
+        dense_features = tf.keras.layers.Dense(
+            units=self.model_params.arc_params.num_bits, activation='relu', name='dense_features'
+        )(features)
+        for i in range(self.model_params.hyper_params.num_dense):
+            dense_features = tf.keras.layers.Dense(
+                units=self.model_params.arc_params.num_bits, activation='leaky_relu', name=f'Dens-{i}'
+            )(dense_features) + dense_features
 
         sold_price_bits = tf.keras.layers.Dense(
             units=self.model_params.arc_params.num_bits, activation='sigmoid',
@@ -200,6 +210,7 @@ class KerasModelTrainer:
                   train_params: TrainParams) -> tf.keras.callbacks.History:
         keras_model = self.model_builder.build()
         arc_params = self.model_builder.model_params.arc_params
+        bit_loss_weight = self.model_params.hyper_params.bit_loss_weight
         keras_model.compile(
             optimizer=tf.keras.optimizers.Adam(learning_rate=train_params.learning_rate),
             loss={
@@ -207,8 +218,8 @@ class KerasModelTrainer:
                 arc_params.bits_feature_name: tf.keras.losses.BinaryCrossentropy()
             },
             loss_weights={
-                arc_params.price_feature_name: 0.99,
-                arc_params.bits_feature_name: 0.01
+                arc_params.price_feature_name: 1 - bit_loss_weight,
+                arc_params.bits_feature_name: bit_loss_weight
             }
         )
 

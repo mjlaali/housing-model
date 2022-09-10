@@ -63,6 +63,7 @@ def main(model_params_path: str, model_path: str, train_params_path: str, overfi
     with open(train_params_path) as fin:
         train_params = TrainParams.from_json(fin.read())
     keras_model.fit_model(train_ds, dev_ds, train_params)
+    keras_model.save(model_path)
 
     # test the exported model
     test_ds = tfds.load('tf_housing', split='test')

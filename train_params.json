@@ -1,11 +1,11 @@
 {
     "batch_size": 128,
-    "epochs": 1000,
+    "epochs": 10000,
     "learning_rate": 0.001,
     "early_stopping": {
-        "patient": 500,
+        "patience": 100,
         "verbose": 1,
         "mode": "min",
-        "restore_best_weight": false
+        "restore_best_weight": true
     }
 }

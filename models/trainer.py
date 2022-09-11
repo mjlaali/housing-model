@@ -1,16 +1,12 @@
 import argparse
 import json
 import shutil
-from datetime import datetime
 
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
-from housing_model.data.example import Example, Features
-from housing_model.data.tf_housing.feature_names import SOLD_PRICE, MAP_LAT, MAP_LON, LAND_FRONT, LAND_DEPTH, DATE_END
-from housing_model.evaluations.evaluation import Evaluation, PercentageErrorRate, Metric
-from housing_model.models.house_price_predictor import HousePricePredictor
-from housing_model.models.keras_model import KerasModelTrainer, TrainParams, ModelParams, EarlyStoppingSetting
+from housing_model.evaluations.keras_model_evaluator import eval_model_on_tfds
+from housing_model.models.keras_model import KerasModelTrainer, TrainParams, ModelParams
 
 
 def get_overfit_loss(train_ds: tf.data.Dataset, keras_model: KerasModelTrainer, overfit_train_params: TrainParams) -> float:
@@ -21,27 +17,6 @@ def get_overfit_loss(train_ds: tf.data.Dataset, keras_model: KerasModelTrainer, 
         overfit_train_params,
     )
     return hist.history['loss'][-1]
-
-
-# TODO: write test for this function
-def eval_model_on_tfds(eval_data: tf.data.Dataset, model: HousePricePredictor) -> Metric:
-    examples = [
-        Example(ml_num="N/A", sold_price=int(ex[SOLD_PRICE].numpy().item()), features=Features(
-            house_sigma_estimation=0.0,
-            map_lat=ex[MAP_LAT].numpy().item(),
-            map_lon=ex[MAP_LON].numpy().item(),
-            land_front=ex[LAND_FRONT].numpy().item(),
-            land_depth=ex[LAND_DEPTH].numpy().item(),
-            date_end=datetime.fromtimestamp(
-                int(ex[DATE_END].numpy().item() * 24 * 3600) + datetime(1970, 1, 1).timestamp()
-            )
-        ))
-        for ex in eval_data
-    ]
-
-    evaluation = Evaluation(PercentageErrorRate, examples)
-    metrics = evaluation.eval(model)
-    return metrics
 
 
 def main(model_params_path: str, model_path: str, train_params_path: str, overfit_train_params_path: str):
@@ -55,7 +30,6 @@ def main(model_params_path: str, model_path: str, train_params_path: str, overfi
 
     # check the model architecture does not have any error
     check_model_architecture(model_params, model_path, train_ds, overfit_train_params)
-    shutil.rmtree(model_path)
 
     # start training job and export the model
     dev_ds = tfds.load('tf_housing', split='dev')
@@ -63,6 +37,8 @@ def main(model_params_path: str, model_path: str, train_params_path: str, overfi
     with open(train_params_path) as fin:
         train_params = TrainParams.from_json(fin.read())
     keras_model.fit_model(train_ds, dev_ds, train_params)
+
+    shutil.rmtree(model_path)
     keras_model.save(model_path)
 
     # test the exported model

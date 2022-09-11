@@ -8,6 +8,7 @@ from glob import glob
 from typing import Callable
 
 import numpy as np
+import tqdm
 
 from housing_data.analysis.json_to_df import standardize_data
 from housing_model.data.data import Data, prepare_data
@@ -75,7 +76,7 @@ class Evaluation:
 
     def eval(self, model: HousePricePredictor) -> Metric:
         metric = self._metric_factory()
-        for example in self._eval_data:
+        for example in tqdm.tqdm(self._eval_data):
             prediction = model.predict(example.features)
             metric.compute(example, prediction)
             model.update(example)

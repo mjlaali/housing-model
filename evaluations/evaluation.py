@@ -76,6 +76,7 @@ class Evaluation:
 
     def eval(self, model: HousePricePredictor) -> Metric:
         metric = self._metric_factory()
+
         for example in tqdm.tqdm(self._eval_data):
             prediction = model.predict(example.features)
             metric.compute(example, prediction)

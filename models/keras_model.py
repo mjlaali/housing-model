@@ -9,6 +9,7 @@ from dataclasses_json import DataClassJsonMixin
 
 from housing_model.data.example import Features, Example
 from housing_model.data.tf_housing import TfHousing
+from housing_model.data.tf_housing.feature_names import SOLD_PRICE
 from housing_model.models.house_price_predictor import HousePricePredictor
 
 
@@ -29,8 +30,8 @@ class ArchitectureParams(DataClassJsonMixin):
     @staticmethod
     def from_dataset(train_ds: tf.data.Dataset):
         input_features = set(train_ds.element_spec.keys())
-        input_features.remove('metadata')
-        input_features.remove('sold_price')
+        input_features.remove("metadata")
+        input_features.remove("sold_price")
         return ArchitectureParams(input_features)
 
 
@@ -39,7 +40,7 @@ class EarlyStoppingSetting(DataClassJsonMixin):
     min_delta: float = 0
     patience: int = 100
     verbose: int = 0
-    mode: str = 'auto'
+    mode: str = "auto"
     restore_best_weights: bool = True
 
 
@@ -58,12 +59,12 @@ def bits_to_num(bits, num_bits):
 
 
 def num_to_bits(num, num_bits):
-  bits = tf.cast(
-      tf.bitwise.bitwise_and(
-          tf.cast(num, 'int32'),
-          tf.pow(2, tf.range(num_bits))
-      ) > 0, dtype='int32')
-  return bits
+    bits = tf.cast(
+        tf.bitwise.bitwise_and(tf.cast(num, "int32"), tf.pow(2, tf.range(num_bits)))
+        > 0,
+        dtype="int32",
+    )
+    return bits
 
 
 @dataclass
@@ -77,6 +78,7 @@ class ModelBuilder(DataClassJsonMixin):
     """
     Build a keras model
     """
+
     model_params: ModelParams
 
     debug_mode: Optional[bool] = None
@@ -86,18 +88,22 @@ class ModelBuilder(DataClassJsonMixin):
         input_features = []
 
         for feature in self.model_params.arc_params.float_features:
-            an_input = tf.keras.layers.Input(name=feature, shape=(), dtype='float32')
+            an_input = tf.keras.layers.Input(name=feature, shape=(), dtype="float32")
             inputs.append(an_input)
-            expanded_input = tf.keras.layers.Lambda(lambda x: tf.expand_dims(x, axis=-1))(an_input)
+            expanded_input = tf.keras.layers.Lambda(
+                lambda x: tf.expand_dims(x, axis=-1)
+            )(an_input)
             input_embedding = tf.keras.layers.Dense(
                 units=self.model_params.hyper_params.embedding_size,
                 activation=tf.math.sin,
-                kernel_initializer='random_normal',
-                name=f'to_embedding_{feature}'
+                kernel_initializer="random_normal",
+                name=f"to_embedding_{feature}",
             )(expanded_input)
 
             input_feature = tf.keras.layers.Dense(
-                units=self.model_params.hyper_params.embedding_size, activation='relu', name=f'to_feature_l1_{feature}'
+                units=self.model_params.hyper_params.embedding_size,
+                activation="relu",
+                name=f"to_feature_l1_{feature}",
             )(input_embedding)
 
             # complete_features = tf.keras.layers.Lambda(
@@ -105,7 +111,9 @@ class ModelBuilder(DataClassJsonMixin):
             # )((input_feature, expanded_input))
 
             complete_features = tf.keras.layers.Dense(
-                units=self.model_params.hyper_params.embedding_size, activation='relu', name=f'to_feature_l2_{feature}'
+                units=self.model_params.hyper_params.embedding_size,
+                activation="relu",
+                name=f"to_feature_l2_{feature}",
             )(input_feature)
             input_features.append(complete_features)
 
@@ -115,19 +123,28 @@ class ModelBuilder(DataClassJsonMixin):
             features = input_features[0]
 
         dense_features = tf.keras.layers.Dense(
-            units=self.model_params.arc_params.num_bits, activation='relu', name='dense_features'
+            units=self.model_params.arc_params.num_bits,
+            activation="relu",
+            name="dense_features",
         )(features)
         for i in range(self.model_params.hyper_params.num_dense):
-            dense_features = tf.keras.layers.Dense(
-                units=self.model_params.arc_params.num_bits, activation='leaky_relu', name=f'Dens-{i}'
-            )(dense_features) + dense_features
+            dense_features = (
+                tf.keras.layers.Dense(
+                    units=self.model_params.arc_params.num_bits,
+                    activation="leaky_relu",
+                    name=f"Dens-{i}",
+                )(dense_features)
+                + dense_features
+            )
 
         sold_price_bits = tf.keras.layers.Dense(
-            units=self.model_params.arc_params.num_bits, activation='sigmoid',
-            name=self.model_params.arc_params.bits_feature_name)(features)
+            units=self.model_params.arc_params.num_bits,
+            activation="sigmoid",
+            name=self.model_params.arc_params.bits_feature_name,
+        )(features)
         sold_price = tf.keras.layers.Lambda(
             lambda bits: bits_to_num(bits, self.model_params.arc_params.num_bits),
-            name=self.model_params.arc_params.price_feature_name
+            name=self.model_params.arc_params.price_feature_name,
         )(sold_price_bits)
 
         # sold_price = tf.keras.layers.Dense(units=1, activation=None, name='dense_price')(features)
@@ -140,15 +157,14 @@ class ModelBuilder(DataClassJsonMixin):
             inputs=inputs,
             outputs={
                 self.model_params.arc_params.price_feature_name: sold_price,
-                self.model_params.arc_params.bits_feature_name: sold_price_bits
-            }
+                self.model_params.arc_params.bits_feature_name: sold_price_bits,
+            },
         )
 
         self.debug_model = tf.keras.Model(
             inputs=inputs,
-            outputs={
-                layer.name: layer.output for layer in self.model.layers
-            })
+            outputs={layer.name: layer.output for layer in self.model.layers},
+        )
 
         return self.model
 
@@ -158,14 +174,21 @@ class KerasHousePricePredictor(HousePricePredictor):
     """
     Convert a keras model to HousePricePredictor
     """
+
     model: tf.keras.Model
     price_model_output: str
 
     def predict(self, features: Features) -> Optional[float]:
-        _, encoded_features = TfHousing.to_features(Example(sold_price=0, ml_num="NA", features=features))
-        batch_features = {k: np.asarray([v]) for k, v in encoded_features.items() if k != "metadata"}
-        predictions = self.model.predict(batch_features)
-        return predictions[self.price_model_output].astype(float)
+        _, encoded_features = TfHousing.to_features(
+            Example(sold_price=0, ml_num="NA", features=features)
+        )
+        batch_features = {
+            k: np.asarray([v])
+            for k, v in encoded_features.items()
+            if k != "metadata" and k != SOLD_PRICE
+        }
+        predictions = self.model(batch_features, training=False)
+        return predictions[self.price_model_output].numpy().astype(float)
 
 
 @dataclass
@@ -173,6 +196,7 @@ class DatasetProcessor:
     """
     Prepare a data set for a specific model.
     """
+
     model_params: ArchitectureParams
 
     def setup_data(self, tf_data: tf.data.Dataset, batch_size: int):
@@ -180,11 +204,14 @@ class DatasetProcessor:
             lambda ex: (
                 {f_name: ex[f_name] for f_name in self.model_params.float_features},
                 {
-                    self.model_params.price_feature_name: ex[self.model_params.price_feature_name],
+                    self.model_params.price_feature_name: ex[
+                        self.model_params.price_feature_name
+                    ],
                     self.model_params.bits_feature_name: num_to_bits(
-                        ex[self.model_params.price_feature_name], self.model_params.num_bits
-                    )
-                }
+                        ex[self.model_params.price_feature_name],
+                        self.model_params.num_bits,
+                    ),
+                },
             )
         )
 
@@ -204,23 +231,27 @@ class KerasModelTrainer:
     model_params: ModelParams  # This is a redundant and added to ease saving the model configs
     keras_model: Optional[tf.keras.Model] = None
 
-    def fit_model(self,
-                  train_ds: tf.data.Dataset,
-                  dev_ds: tf.data.Dataset,
-                  train_params: TrainParams) -> tf.keras.callbacks.History:
+    def fit_model(
+        self,
+        train_ds: tf.data.Dataset,
+        dev_ds: tf.data.Dataset,
+        train_params: TrainParams,
+    ) -> tf.keras.callbacks.History:
         keras_model = self.model_builder.build()
         arc_params = self.model_builder.model_params.arc_params
         bit_loss_weight = self.model_params.hyper_params.bit_loss_weight
         keras_model.compile(
-            optimizer=tf.keras.optimizers.Adam(learning_rate=train_params.learning_rate),
+            optimizer=tf.keras.optimizers.Adam(
+                learning_rate=train_params.learning_rate
+            ),
             loss={
                 arc_params.price_feature_name: tf.keras.losses.MeanSquaredLogarithmicError(),
-                arc_params.bits_feature_name: tf.keras.losses.BinaryCrossentropy()
+                arc_params.bits_feature_name: tf.keras.losses.BinaryCrossentropy(),
             },
             loss_weights={
                 arc_params.price_feature_name: 1 - bit_loss_weight,
-                arc_params.bits_feature_name: bit_loss_weight
-            }
+                arc_params.bits_feature_name: bit_loss_weight,
+            },
         )
 
         callbacks = []
@@ -233,16 +264,19 @@ class KerasModelTrainer:
 
         hist = keras_model.fit(
             self.data_provider.setup_data(train_ds, train_params.batch_size),
-            validation_data=self.data_provider.setup_data(dev_ds, train_params.batch_size),
+            validation_data=self.data_provider.setup_data(
+                dev_ds, train_params.batch_size
+            ),
             epochs=train_params.epochs,
-            callbacks=callbacks
+            callbacks=callbacks,
         )
         self.keras_model = keras_model
         return hist
 
     def make_predictor(self) -> HousePricePredictor:
         return KerasHousePricePredictor(
-            self.keras_model, self.model_builder.model_params.arc_params.price_feature_name
+            self.keras_model,
+            self.model_builder.model_params.arc_params.price_feature_name,
         )
 
     def save(self, a_path: str):
@@ -271,7 +305,7 @@ class KerasModelTrainer:
             DatasetProcessor(model_params.arc_params),
             model_builder,
             model_params,
-            keras_model
+            keras_model,
         )
 
     @staticmethod
@@ -279,6 +313,5 @@ class KerasModelTrainer:
         return KerasModelTrainer(
             DatasetProcessor(model_params.arc_params),
             ModelBuilder(model_params),
-            model_params
+            model_params,
         )
-

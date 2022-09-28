@@ -2,10 +2,16 @@
   "hyper_params": {
     "embedding_size": 128,
     "num_dense": 4,
-    "bit_loss_weight": 0.1
+    "bit_loss_weight": 0.2
   },
   "arc_params": {
-    "float_features": ["map/lat", "map/lon", "land/front", "land/depth", "date_end"],
+    "float_features": [
+      "map_lat",
+      "map_lon",
+      "land_front",
+      "land_depth",
+      "date_end"
+    ],
     "num_bits": 32,
     "price_feature_name": "sold_price",
     "bits_feature_name": "bits"

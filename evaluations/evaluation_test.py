@@ -1,6 +1,6 @@
 import pytest
 
-from housing_model.data.example import Example, Features
+from housing_data_generator.date_model.example import Example
 from housing_model.evaluations.evaluation import PercentageErrorRate
 
 

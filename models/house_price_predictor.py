@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Optional
 
-from housing_model.data.example import Features, Example
+from housing_data_generator.date_model.example import Features, Example
 
 
 class HousePricePredictor(ABC):

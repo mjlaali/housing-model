@@ -5,16 +5,17 @@ import math
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from glob import glob
-from typing import Callable
+from typing import Callable, Optional
 
 import numpy as np
 import tqdm
 
-from housing_data.analysis.json_to_df import standardize_data
-from housing_model.data.data import Data, prepare_data
-from housing_model.data.example import Example
+from housing_data_generator.date_model.data import Data, prepare_data
+from housing_data_generator.date_model.example import Example
+from housing_data_generator.date_model.utils import standardize_data
 from housing_model.models.house_price_predictor import HousePricePredictor
 from housing_model.models.baselines import HouseSigmaHousePricePredictor
+from housing_model.models.keras_model import KerasModelTrainer
 
 _logger = logging.getLogger(__name__)
 
@@ -85,12 +86,17 @@ class Evaluation:
         return metric
 
 
-def main(eval_file_pattern):
+def main(eval_file_pattern: str, model_path: Optional[str]):
     files = glob(eval_file_pattern)
     cleaned_rows = standardize_data(files)
     examples, _ = prepare_data(cleaned_rows)
     evaluation = Evaluation(PercentageErrorRate, examples)
-    model = HouseSigmaHousePricePredictor()
+
+    if model_path:
+        keras_model = KerasModelTrainer.load(model_path)
+        model = keras_model.make_predictor()
+    else:
+        model = HouseSigmaHousePricePredictor()
 
     metrics = evaluation.eval(model)
     print(json.dumps(metrics.value, indent=2))
@@ -99,7 +105,8 @@ def main(eval_file_pattern):
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     parser = argparse.ArgumentParser()
-    parser.add_argument("eval_file_pattern")
+    parser.add_argument("--eval_file_pattern", required=True)
+    parser.add_argument("--model_path")
 
     args = parser.parse_args()
     main(**vars(args))

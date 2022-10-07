@@ -3,7 +3,7 @@
     "epochs": 10000,
     "learning_rate": 0.001,
     "early_stopping": {
-        "patience": 100,
+        "patience": 20,
         "verbose": 1,
         "mode": "min",
         "restore_best_weight": true

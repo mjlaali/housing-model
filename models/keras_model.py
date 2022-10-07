@@ -7,7 +7,7 @@ import numpy as np
 import tensorflow as tf
 from dataclasses_json import DataClassJsonMixin
 
-from housing_model.data.example import Features, Example
+from housing_data_generator.date_model.example import Features, Example
 from housing_model.data.tf_housing import TfHousing
 from housing_model.data.tf_housing.feature_names import SOLD_PRICE
 from housing_model.models.house_price_predictor import HousePricePredictor
@@ -17,6 +17,7 @@ from housing_model.models.house_price_predictor import HousePricePredictor
 class HyperParams(DataClassJsonMixin):
     embedding_size: int
     num_dense: int
+    num_feature_dense: int
     bit_loss_weight: float
 
 
@@ -103,19 +104,17 @@ class ModelBuilder(DataClassJsonMixin):
             input_feature = tf.keras.layers.Dense(
                 units=self.model_params.hyper_params.embedding_size,
                 activation="relu",
-                name=f"to_feature_l1_{feature}",
+                name=f"to_feature_{feature}",
             )(input_embedding)
 
-            # complete_features = tf.keras.layers.Lambda(
-            #     lambda x: tf.concat(x, axis=-1), name=f"embedding_with_original_{feature}"
-            # )((input_feature, expanded_input))
+            for i in range(self.model_params.hyper_params.num_feature_dense):
+                input_feature += tf.keras.layers.Dense(
+                    units=self.model_params.hyper_params.embedding_size,
+                    activation="relu",
+                    name=f"to_feature_l{i}_{feature}",
+                )(input_feature)
 
-            complete_features = tf.keras.layers.Dense(
-                units=self.model_params.hyper_params.embedding_size,
-                activation="relu",
-                name=f"to_feature_l2_{feature}",
-            )(input_feature)
-            input_features.append(complete_features)
+            input_features.append(input_feature)
 
         if len(input_features) > 1:
             features = tf.keras.layers.Add(name="feature_aggregation")(input_features)
@@ -146,12 +145,6 @@ class ModelBuilder(DataClassJsonMixin):
             lambda bits: bits_to_num(bits, self.model_params.arc_params.num_bits),
             name=self.model_params.arc_params.price_feature_name,
         )(sold_price_bits)
-
-        # sold_price = tf.keras.layers.Dense(units=1, activation=None, name='dense_price')(features)
-
-        # predictions = tf.keras.layers.Lambda(
-        #     lambda batch_prices: tf.squeeze(batch_prices, axis=-1), name='sold_price'
-        # )(sold_price)
 
         self.model = tf.keras.Model(
             inputs=inputs,

@@ -1,8 +1,9 @@
 {
   "hyper_params": {
-    "embedding_size": 128,
-    "num_dense": 4,
-    "bit_loss_weight": 0.2
+    "embedding_size": 512,
+    "num_feature_dense": 4,
+    "num_dense": 3,
+    "bit_loss_weight": 0.1
   },
   "arc_params": {
     "float_features": [

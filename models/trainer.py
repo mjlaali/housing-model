@@ -38,7 +38,7 @@ def main(
         train_params,
     )
 
-    shutil.rmtree(model_path)
+    shutil.rmtree(model_path, ignore_errors=True)
     keras_model.save(model_path)
 
     # test the exported model

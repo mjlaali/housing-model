@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, Set
@@ -75,14 +75,13 @@ class ModelParams(DataClassJsonMixin):
 
 
 @dataclass
-class ModelBuilder(DataClassJsonMixin):
+class ModelBuilder:
     """
     Build a keras model
     """
 
     model_params: ModelParams
-
-    debug_mode: Optional[bool] = None
+    model: Optional[tf.keras.Model] = field(init=False)
 
     def build(self) -> tf.keras:
         inputs = []
@@ -154,11 +153,6 @@ class ModelBuilder(DataClassJsonMixin):
             },
         )
 
-        self.debug_model = tf.keras.Model(
-            inputs=inputs,
-            outputs={layer.name: layer.output for layer in self.model.layers},
-        )
-
         return self.model
 
 
@@ -224,13 +218,17 @@ class KerasModelTrainer:
     model_params: ModelParams  # This is a redundant and added to ease saving the model configs
     keras_model: Optional[tf.keras.Model] = None
 
+    def __post_init__(self):
+        self.keras_model = self.model_builder.build()
+
     def fit_model(
         self,
         train_ds: tf.data.Dataset,
         dev_ds: tf.data.Dataset,
         train_params: TrainParams,
     ) -> tf.keras.callbacks.History:
-        keras_model = self.model_builder.build()
+        keras_model = self.keras_model
+
         arc_params = self.model_builder.model_params.arc_params
         bit_loss_weight = self.model_params.hyper_params.bit_loss_weight
         keras_model.compile(
@@ -250,7 +248,6 @@ class KerasModelTrainer:
         callbacks = []
         logdir = "logs/scalars/" + datetime.now().strftime("%Y%m%d-%H%M%S")
         callbacks.append(tf.keras.callbacks.TensorBoard(log_dir=logdir))
-
         early_stopping_settings = train_params.early_stopping.to_dict()
         early_stopping_settings["monitor"] = f"{arc_params.price_feature_name}_loss"
         callbacks.append(tf.keras.callbacks.EarlyStopping(**early_stopping_settings))

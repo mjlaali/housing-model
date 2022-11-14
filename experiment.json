@@ -1,0 +1,47 @@
+{
+  "modeling": {
+    "hyper_params": {
+      "embedding_size": 64,
+      "num_feature_dense": 4,
+      "num_dense": 2,
+      "bit_loss_weight": 0.1
+    },
+    "arc_params": {
+      "float_features": [
+        "map_lat",
+        "map_lon",
+        "land_front",
+        "land_depth",
+        "date_end"
+      ],
+      "num_bits": 32,
+      "price_feature_name": "sold_price",
+      "bits_feature_name": "bits"
+    }
+  },
+  "training": {
+    "batch_size": 32,
+    "epochs": 10000,
+    "learning_rate": 0.001,
+    "early_stopping": {
+      "patience": 20,
+      "verbose": 1,
+      "mode": "min",
+      "restore_best_weight": true
+    }
+  },
+  "datasets": {
+    "train": {
+      "start": "2019-01-01",
+      "end": "2019-12-01"
+    },
+    "dev": {
+      "start": "2019-12-01",
+      "end": "2020-02-01"
+    },
+    "test": {
+      "start": "2020-02-01",
+      "end": "2021-01-01"
+    }
+  }
+}

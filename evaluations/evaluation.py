@@ -45,9 +45,8 @@ class PercentageErrorRate(Metric):
         self._total_cnt += 1
         if prediction is not None:
             val = math.fabs(example.sold_price - prediction) / example.sold_price
-            if val < 1.0:
-                self.values.append(val)
-            else:
+            self.values.append(val)
+            if val > 1.0:
                 self._outlier += 1
 
     @property
@@ -59,8 +58,6 @@ class PercentageErrorRate(Metric):
             "med": np.median(values),
             "var": np.std(values),
             "outlier_cnt": self._outlier,
-            "in_range_cnt": len(values),
-            "in_range_rate": len(values) / self._total_cnt,
             "outlier_rate": self._outlier / self._total_cnt,
         }
 

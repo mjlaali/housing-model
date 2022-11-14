@@ -1,9 +1,9 @@
 """tf_housing dataset."""
-import logging
-import random
 from datetime import datetime
+import logging
 import os
-from typing import Tuple, Dict, Any
+import random
+from typing import Tuple, Dict, Any, List
 
 import tensorflow as tf
 import tensorflow_datasets as tfds
@@ -22,6 +22,7 @@ from housing_model.data.tf_housing.feature_names import (
     METADATA,
     ML_NUM,
 )
+from housing_model.data.tf_housing.utils import path_generator, clean_paths
 
 _DESCRIPTION = """
 **Housing Data Set**
@@ -43,6 +44,17 @@ class TfHousing(tfds.core.GeneratorBasedBuilder):
     RELEASE_NOTES = {
         "1.0.0": "Initial release.",
     }
+
+    def __init__(
+        self,
+        *args,
+        start_time: datetime = datetime(2002, 1, 1),
+        end_time: datetime = datetime(2021, 1, 1),
+        **kwargs,
+    ):
+        self.start_time = start_time
+        self.end_time = end_time
+        super().__init__(*args, **kwargs)
 
     def _info(self) -> tfds.core.DatasetInfo:
         """Returns the dataset metadata."""
@@ -71,29 +83,23 @@ class TfHousing(tfds.core.GeneratorBasedBuilder):
         housing_dir = os.getenv(
             "DATASET_DIR", f"{os.path.dirname(__file__)}/../../../housing_data/"
         )
-        return os.path.abspath(housing_dir)
+        return housing_dir
 
     def _split_generators(self, dl_manager: tfds.download.DownloadManager):
         """Returns SplitGenerators."""
 
         root_dir = self._get_housing_data_dir()
         paths = dl_manager.download_and_extract(
-            {
-                "train": [
-                    f"{root_dir}/Y{year}-sold.tar.gz" for year in range(2006, 2020)
-                ],
-                "dev": [
-                    f"{root_dir}/Y{year}-sold.tar.gz" for year in range(2002, 2006)
-                ],
-                "test": [
-                    f"{root_dir}/Y{year}-sold.tar.gz" for year in range(2020, 2021)
-                ],
-            }
+            {year: f"{root_dir}/Y{year}-sold.tar.gz" for year in range(2002, 2021)}
+        )
+
+        partition_paths = clean_paths(
+            path_generator(paths, self.start_time, self.end_time)
         )
 
         return {
-            split: self._generate_examples(paths[split])
-            for split in ("train", "test", "dev")
+            partition: self._generate_examples(file_paths)
+            for partition, file_paths in partition_paths
         }
 
     @staticmethod
@@ -115,31 +121,18 @@ class TfHousing(tfds.core.GeneratorBasedBuilder):
             METADATA: {ML_NUM: ex.ml_num},
         }
 
-    def _generate_examples(self, paths, pattern: str = "*"):
+    def _generate_examples(self, paths: List[str]):
         """Yields examples."""
-        all_files = []
-        for path in paths:
-            file_prefix = "*/days/"
-            files = list(path.glob(f"{file_prefix}[0-9]" + pattern))
 
-            assert len(files) > 0, f"Cannot find any file in the {path}"
-            ignored_files = set(path.glob(f"{file_prefix}*")).difference(files)
+        random.shuffle(paths)
 
-            logger.info(
-                f"{', '.join(str(f) for f in ignored_files)} will be ignored when generating examples."
-            )
-
-            all_files += files
-
-        random.shuffle(all_files)
-
-        data_stream = tqdm(load_from_files(tqdm(all_files)))
+        data_stream = tqdm(load_from_files(tqdm(paths)))
         cleaned_rows = standardize_data(data_stream)
         examples, parser = prepare_data(cleaned_rows)
         for ex in examples:
             yield self.to_features(ex)
         logger.info(
-            f"{parser.parsed_example} has been read from {len(str(files))}. "
+            f"{parser.parsed_example} has been read from {len(paths)}. "
             f"{parser.err_cnt} examples have been filtered due to a parse error. "
             f"{parser.err_cnt / max(parser.parsed_example + parser.err_cnt, 1):.2f}"
         )

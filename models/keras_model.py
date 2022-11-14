@@ -5,7 +5,7 @@ from typing import Optional, Set
 
 import numpy as np
 import tensorflow as tf
-from dataclasses_json import DataClassJsonMixin
+from dataclasses_json import DataClassJsonMixin, config
 
 from housing_data_generator.date_model.example import Features, Example
 from housing_model.data.tf_housing import TfHousing
@@ -46,11 +46,47 @@ class EarlyStoppingSetting(DataClassJsonMixin):
 
 
 @dataclass
+class DatasetSpec(DataClassJsonMixin):
+    start: datetime = field(
+        metadata=config(
+            encoder=lambda date: date.strftime("%Y-%m-%d"),
+            decoder=lambda str_date: datetime.strptime(str_date, "%Y-%m-%d"),
+        )
+    )
+    end: datetime = field(
+        metadata=config(
+            encoder=lambda date: date.strftime("%Y-%m-%d"),
+            decoder=lambda str_date: datetime.strptime(str_date, "%Y-%m-%d"),
+        )
+    )
+
+
+@dataclass
+class DatasetsSpec(DataClassJsonMixin):
+    train: DatasetSpec
+    dev: DatasetSpec
+    test: DatasetSpec
+
+
+@dataclass
 class TrainParams(DataClassJsonMixin):
     batch_size: int
     epochs: int
     learning_rate: float
     early_stopping: EarlyStoppingSetting = EarlyStoppingSetting()
+
+
+@dataclass
+class ModelParams(DataClassJsonMixin):
+    hyper_params: HyperParams
+    arc_params: ArchitectureParams
+
+
+@dataclass
+class ExperimentSpec(DataClassJsonMixin):
+    datasets: DatasetsSpec
+    training: TrainParams
+    modeling: ModelParams
 
 
 def bits_to_num(bits, num_bits):
@@ -66,12 +102,6 @@ def num_to_bits(num, num_bits):
         dtype="int32",
     )
     return bits
-
-
-@dataclass
-class ModelParams(DataClassJsonMixin):
-    hyper_params: HyperParams
-    arc_params: ArchitectureParams
 
 
 @dataclass

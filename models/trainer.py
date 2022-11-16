@@ -40,10 +40,10 @@ def create_dataset(
     return final_dataset
 
 
-def main(
-    experiment: str,
+def train_job(
+    experiment_spec: ExperimentSpec,
     output: str,
-):
+) -> float:
     logger.info(
         "Please first run keras_model_test before running trainer.py to make sure the model get trained."
     )
@@ -51,10 +51,9 @@ def main(
     shutil.rmtree(output, ignore_errors=True)
     output_path = Path(output)
     output_path.mkdir(parents=True)
-    shutil.copy(experiment, output_path / "exp_config.json")
 
-    with open(experiment) as fin:
-        experiment_spec = ExperimentSpec.from_json(fin.read())
+    with open(output_path / "exp_config.json", "w") as config_file:
+        config_file.write(experiment_spec.to_json(indent=2))
 
     datasets: Dict[str, tf.data.Dataset] = tfds.load("tf_housing")
 
@@ -82,6 +81,17 @@ def main(
         eval_json = json.dumps(metrics.value, indent=2, sort_keys=True)
         eval_file.write(eval_json)
         print(eval_json)
+    return metrics["med"]
+
+
+def main(
+    experiment: str,
+    output: str,
+):
+    with open(experiment) as fin:
+        experiment_spec = ExperimentSpec.from_json(fin.read())
+
+    train_job(experiment_spec, output)
 
 
 if __name__ == "__main__":

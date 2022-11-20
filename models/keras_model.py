@@ -1,7 +1,10 @@
+import base64
+import dill
+import pickle
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Set
+from typing import Optional, Set, Callable
 
 import numpy as np
 import tensorflow as tf
@@ -256,6 +259,44 @@ class UpdateOnEpoch(tf.keras.callbacks.Callback):
 
 
 @dataclass
+class AdaptiveLoss(tf.keras.callbacks.Callback):
+    loss_fn_id: str
+    weight_fn: Callable[[int, float], float]
+    w_init: float
+    name: str = "weight"
+    verbose: int = 0
+
+    def __post_init__(self):
+        self._loss_fn = tf.keras.losses.get(self.loss_fn_id)
+        self._weight = self.w_init
+
+    def __call__(self, y_true, y_pred):
+        return self._weight * self._loss_fn(y_true, y_pred)
+
+    def on_epoch_end(self, epoch, logs=None):
+        self._weight = self.weight_fn(epoch, self.w_init)
+        if self.verbose:
+            io_utils.print_msg(f"Weight `{self.name}` got updated to {self._weight}.")
+
+    def get_config(self):
+        base64_encode = base64.b64encode(dill.dumps(self.weight_fn))
+        return {
+            "loss_fn_id": self.loss_fn_id,
+            "weight_fn_str": base64_encode.decode("ascii"),
+            "w_init": self.w_init,
+            "verbose": self.verbose,
+            "name": self.name,
+        }
+
+    @classmethod
+    def from_config(cls, config):
+        base64_encode = bytes(config.pop("weight_fn_str"), "ascii")
+        weight_fn = dill.loads(base64.b64decode(base64_encode))
+        config["weight_fn"] = weight_fn
+        return cls(**config)
+
+
+@dataclass
 class KerasModelTrainer:
     """
     Glue different classes to train a keras model and build a HousePricePredictor
@@ -283,19 +324,27 @@ class KerasModelTrainer:
         bit_loss_weight = self.model_params.hyper_params.bit_loss_weight
         assert 0 <= bit_loss_weight <= 1
 
-        alpha = tf.Variable(bit_loss_weight, name="alpha")
-        beta = tf.Variable(1 - alpha, name="beta")
+        price_loss = AdaptiveLoss(
+            "mean_squared_logarithmic_error",
+            weight_fn=lambda epoch, w_init: 1 - w_init**epoch,
+            w_init=bit_loss_weight,
+            name="w_price",
+            verbose=1,
+        )
+        bit_loss = AdaptiveLoss(
+            "binary_crossentropy",
+            weight_fn=lambda epoch, w_init: w_init**epoch,
+            w_init=bit_loss_weight,
+            name="w_bits",
+            verbose=1,
+        )
         keras_model.compile(
             optimizer=tf.keras.optimizers.Adam(
                 learning_rate=train_params.learning_rate
             ),
             loss={
-                arc_params.price_feature_name: tf.keras.losses.MeanSquaredLogarithmicError(),
-                arc_params.bits_feature_name: tf.keras.losses.BinaryCrossentropy(),
-            },
-            loss_weights={
-                arc_params.price_feature_name: beta,
-                arc_params.bits_feature_name: alpha,
+                arc_params.price_feature_name: price_loss,
+                arc_params.bits_feature_name: bit_loss,
             },
         )
 
@@ -311,21 +360,9 @@ class KerasModelTrainer:
             ] = f"val_{arc_params.price_feature_name}_loss"
         callbacks.append(tf.keras.callbacks.EarlyStopping(**early_stopping_settings))
 
-        callbacks.append(UpdateOnEpoch(alpha, beta))
+        callbacks.append(price_loss)
+        callbacks.append(bit_loss)
 
-        # callbacks.append(
-        #     tf.keras.callbacks.ModelCheckpoint(
-        #         filepath=str(
-        #             self.output_dir / "ckpt" / "{epoch:02d}-{val_sold_price_loss:.4f}"
-        #         ),
-        #         verbose=1,
-        #         save_weights_only=True,
-        #         monitor="val_sold_price_loss",
-        #         mode="min",
-        #         save_best_only=True,
-        #     )
-        # )
-        #
         hist = keras_model.fit(
             self.data_provider.setup_data(train_ds, train_params.batch_size),
             validation_data=self.data_provider.setup_data(
@@ -359,7 +396,9 @@ class KerasModelTrainer:
             model_params = ModelParams.from_json(config_file.read())
 
         model_builder = ModelBuilder(model_params)
-        keras_model = tf.keras.models.load_model(output_dir / "keras_model")
+        keras_model = tf.keras.models.load_model(
+            output_dir / "keras_model", custom_objects={"AdaptiveLoss": AdaptiveLoss}
+        )
 
         return KerasModelTrainer(
             data_provider=DatasetProcessor(model_params.arc_params),

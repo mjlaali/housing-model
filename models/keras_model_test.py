@@ -1,11 +1,13 @@
 import json
 import os
+from datetime import datetime
 from pathlib import Path
 
 import keras.layers
 import numpy as np
 import tensorflow as tf
 import tensorflow_datasets as tfds
+from sqlalchemy.engine import AdaptedConnection
 
 from housing_model.evaluations.keras_model_evaluator import eval_model_on_tfds
 from housing_model.models.keras_model import (
@@ -17,6 +19,8 @@ from housing_model.models.keras_model import (
     ModelParams,
     TrainParams,
     ExperimentSpec,
+    DatasetSpec,
+    AdaptiveLoss,
 )
 from housing_model.models.trainer import train_job
 
@@ -156,8 +160,11 @@ def test_save_load(tmpdir):
     with open(experiment_config_file) as fin:
         experiment_config = ExperimentSpec.from_json(fin.read())
         expected_trainer = KerasModelTrainer.build(experiment_config.modeling, tmpdir)
-        # experiment_config.training.epochs = 1
-        # train_job(experiment_config, str(tmpdir))
+        experiment_config.training.epochs = 1
+        experiment_config.datasets.train = DatasetSpec(
+            datetime(2019, 1, 1), datetime(2019, 2, 1)
+        )
+        train_job(experiment_config, str(tmpdir))
 
     expected_trainer.save()
     actual_trainer = KerasModelTrainer.load(tmpdir)
@@ -175,3 +182,17 @@ def test_save_load(tmpdir):
                     w_expected,
                     err_msg=f"{actual_layer.name} and {expected_layer.name}",
                 )
+
+
+def test_adaptive_loss():
+    a_loss = AdaptiveLoss("mse", lambda epoch, w_init: w_init**epoch, 0.5)
+    config = a_loss.get_config()
+    json_str = json.dumps(config)
+    loaded_loss = AdaptiveLoss.from_config(json.loads(json_str))
+
+    manual = 0.5**1 * tf.keras.losses.get("mse")(np.asarray([1.0]), np.asarray([2.0]))
+    expected = a_loss(np.asarray([1.0]), np.asarray([2.0]))
+    np.testing.assert_almost_equal(manual, expected)
+
+    actual = loaded_loss(np.asarray([1.0]), np.asarray([2.0]))
+    np.testing.assert_almost_equal(expected, actual)

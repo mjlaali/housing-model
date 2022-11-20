@@ -6,6 +6,7 @@ from typing import Optional, Set
 import numpy as np
 import tensorflow as tf
 from dataclasses_json import DataClassJsonMixin, config
+from keras.utils import io_utils
 
 from housing_data_generator.date_model.example import Features, Example
 from housing_model.data.tf_housing import TfHousing
@@ -170,8 +171,9 @@ class ModelBuilder:
             activation="sigmoid",
             name=self.model_params.arc_params.bits_feature_name,
         )(features)
+        num_bits = self.model_params.arc_params.num_bits
         sold_price = tf.keras.layers.Lambda(
-            lambda bits: bits_to_num(bits, self.model_params.arc_params.num_bits),
+            lambda bits: bits_to_num(bits, num_bits),
             name=self.model_params.arc_params.price_feature_name,
         )(sold_price_bits)
 
@@ -237,6 +239,22 @@ class DatasetProcessor:
         return data
 
 
+class UpdateOnEpoch(tf.keras.callbacks.Callback):
+    def __init__(self, alpha: tf.Variable, beta: tf.Variable):
+        super().__init__()
+        self.init_alpha = tf.constant(alpha)
+        self.alpha = alpha
+        self.beta = beta
+
+    def on_epoch_end(self, epoch, logs=None):
+        new_alpha = self.init_alpha ** (epoch // 5)
+        self.alpha.assign(new_alpha)
+        self.beta.assign(1 - self.alpha)
+        io_utils.print_msg(
+            f"\nThe value of alpha and beta are updated to '{self.alpha.numpy()} and {self.beta.numpy()}'."
+        )
+
+
 @dataclass
 class KerasModelTrainer:
     """
@@ -246,10 +264,12 @@ class KerasModelTrainer:
     data_provider: DatasetProcessor
     model_builder: ModelBuilder
     model_params: ModelParams  # This is a redundant and added to ease saving the model configs
+    output_dir: Path
     keras_model: Optional[tf.keras.Model] = None
 
     def __post_init__(self):
-        self.keras_model = self.model_builder.build()
+        if self.keras_model is None:
+            self.keras_model = self.model_builder.build()
 
     def fit_model(
         self,
@@ -261,6 +281,10 @@ class KerasModelTrainer:
 
         arc_params = self.model_builder.model_params.arc_params
         bit_loss_weight = self.model_params.hyper_params.bit_loss_weight
+        assert 0 <= bit_loss_weight <= 1
+
+        alpha = tf.Variable(bit_loss_weight, name="alpha")
+        beta = tf.Variable(1 - alpha, name="beta")
         keras_model.compile(
             optimizer=tf.keras.optimizers.Adam(
                 learning_rate=train_params.learning_rate
@@ -270,18 +294,38 @@ class KerasModelTrainer:
                 arc_params.bits_feature_name: tf.keras.losses.BinaryCrossentropy(),
             },
             loss_weights={
-                arc_params.price_feature_name: 1 - bit_loss_weight,
-                arc_params.bits_feature_name: bit_loss_weight,
+                arc_params.price_feature_name: beta,
+                arc_params.bits_feature_name: alpha,
             },
         )
 
         callbacks = []
+
         logdir = "logs/scalars/" + datetime.now().strftime("%Y%m%d-%H%M%S")
         callbacks.append(tf.keras.callbacks.TensorBoard(log_dir=logdir))
+
         early_stopping_settings = train_params.early_stopping.to_dict()
-        early_stopping_settings["monitor"] = f"{arc_params.price_feature_name}_loss"
+        if "monitor" not in early_stopping_settings:
+            early_stopping_settings[
+                "monitor"
+            ] = f"val_{arc_params.price_feature_name}_loss"
         callbacks.append(tf.keras.callbacks.EarlyStopping(**early_stopping_settings))
 
+        callbacks.append(UpdateOnEpoch(alpha, beta))
+
+        # callbacks.append(
+        #     tf.keras.callbacks.ModelCheckpoint(
+        #         filepath=str(
+        #             self.output_dir / "ckpt" / "{epoch:02d}-{val_sold_price_loss:.4f}"
+        #         ),
+        #         verbose=1,
+        #         save_weights_only=True,
+        #         monitor="val_sold_price_loss",
+        #         mode="min",
+        #         save_best_only=True,
+        #     )
+        # )
+        #
         hist = keras_model.fit(
             self.data_provider.setup_data(train_ds, train_params.batch_size),
             validation_data=self.data_provider.setup_data(
@@ -299,39 +343,37 @@ class KerasModelTrainer:
             self.model_builder.model_params.arc_params.price_feature_name,
         )
 
-    def save(self, a_path: str):
-        path_dir = Path(a_path)
-        path_dir.mkdir(exist_ok=True)
+    def save(self):
+        self.output_dir.mkdir(exist_ok=True)
 
-        with open(path_dir / "config.json", "w") as config_file:
+        with open(self.output_dir / "config.json", "w") as config_file:
             config_file.write(self.model_params.to_json())
 
         if self.keras_model:
-            keras_dir = path_dir / "keras_model"
-            keras_dir.mkdir(exist_ok=True)
-            self.keras_model.save_weights(keras_dir)
+            keras_dir = self.output_dir / "keras_model"
+            self.keras_model.save(keras_dir)
 
     @staticmethod
-    def load(a_path: str) -> "KerasModelTrainer":
-        path_dir = Path(a_path)
-        with open(path_dir / "config.json") as config_file:
+    def load(output_dir: Path) -> "KerasModelTrainer":
+        with open(output_dir / "config.json") as config_file:
             model_params = ModelParams.from_json(config_file.read())
 
         model_builder = ModelBuilder(model_params)
-        keras_model = model_builder.build()
-        keras_model.load_weights(path_dir / "keras_model")
+        keras_model = tf.keras.models.load_model(output_dir / "keras_model")
 
         return KerasModelTrainer(
-            DatasetProcessor(model_params.arc_params),
-            model_builder,
-            model_params,
-            keras_model,
+            data_provider=DatasetProcessor(model_params.arc_params),
+            model_builder=model_builder,
+            model_params=model_params,
+            output_dir=output_dir,
+            keras_model=keras_model,
         )
 
     @staticmethod
-    def build(model_params: ModelParams) -> "KerasModelTrainer":
+    def build(model_params: ModelParams, output_dir: Path) -> "KerasModelTrainer":
         return KerasModelTrainer(
             DatasetProcessor(model_params.arc_params),
             ModelBuilder(model_params),
             model_params,
+            output_dir=output_dir,
         )

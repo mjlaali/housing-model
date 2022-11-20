@@ -1,10 +1,10 @@
 {
   "modeling": {
     "hyper_params": {
-      "embedding_size": 64,
+      "embedding_size": 256,
       "num_feature_dense": 4,
       "num_dense": 2,
-      "bit_loss_weight": 0.1
+      "bit_loss_weight": 0.7
     },
     "arc_params": {
       "float_features": [
@@ -20,19 +20,19 @@
     }
   },
   "training": {
-    "batch_size": 32,
+    "batch_size": 1024,
     "epochs": 10000,
     "learning_rate": 0.001,
     "early_stopping": {
-      "patience": 20,
+      "patience": 100,
       "verbose": 1,
       "mode": "min",
-      "restore_best_weight": true
+      "restore_best_weights": true
     }
   },
   "datasets": {
     "train": {
-      "start": "2019-01-01",
+      "start": "2017-01-01",
       "end": "2019-12-01"
     },
     "dev": {

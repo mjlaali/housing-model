@@ -57,7 +57,7 @@ def train_job(
 
     datasets: Dict[str, tf.data.Dataset] = tfds.load("tf_housing")
 
-    keras_model = KerasModelTrainer.build(experiment_spec.modeling)
+    keras_model = KerasModelTrainer.build(experiment_spec.modeling, output_path)
     train_ds = create_dataset(datasets, experiment_spec.datasets.train)
     dev_ds = create_dataset(datasets, experiment_spec.datasets.dev)
 
@@ -69,11 +69,11 @@ def train_job(
         experiment_spec.training,
     )
 
-    keras_model.save(output)
+    keras_model.save()
 
     # test the exported model
     test_ds = create_dataset(datasets, experiment_spec.datasets.test)
-    keras_model = KerasModelTrainer.load(output)
+    keras_model = KerasModelTrainer.load(output_path)
     predictor = keras_model.make_predictor()
     metrics = eval_model_on_tfds(test_ds, predictor)
 
@@ -81,7 +81,7 @@ def train_job(
         eval_json = json.dumps(metrics.value, indent=2, sort_keys=True)
         eval_file.write(eval_json)
         print(eval_json)
-    return metrics["med"]
+    return metrics.value["med"]
 
 
 def main(

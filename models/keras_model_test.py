@@ -1,14 +1,13 @@
 import json
 import os
-from collections import OrderedDict
-from pprint import pprint
+from pathlib import Path
 
+import keras.layers
 import numpy as np
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
 from housing_model.evaluations.keras_model_evaluator import eval_model_on_tfds
-from housing_model.models import trainer
 from housing_model.models.keras_model import (
     ModelBuilder,
     HyperParams,
@@ -17,7 +16,9 @@ from housing_model.models.keras_model import (
     KerasModelTrainer,
     ModelParams,
     TrainParams,
+    ExperimentSpec,
 )
+from housing_model.models.trainer import train_job
 
 
 def test_bits_to_num():
@@ -101,21 +102,25 @@ def get_overfit_loss(
 
 
 def check_model_architecture(
-    model_params: ModelParams,
-    model_path: str,
+    experiment_config: ExperimentSpec,
+    model_path: Path,
     train_ds: tf.data.Dataset,
-    overfit_train_params: TrainParams,
 ):
-    ex_cnt = overfit_train_params.batch_size
+    ex_cnt = experiment_config.training.batch_size
     train_ds = train_ds.take(ex_cnt).cache()
     test_ds = train_ds.take(ex_cnt).cache()
 
-    keras_model = KerasModelTrainer.build(model_params)
+    keras_model = KerasModelTrainer.build(experiment_config.modeling, model_path)
 
-    overfit_loss = get_overfit_loss(train_ds, keras_model, overfit_train_params)
+    overfit_loss = get_overfit_loss(train_ds, keras_model, experiment_config.training)
 
-    keras_model.save(model_path)
-    # keras_model = KerasModelTrainer.load(model_path)
+    learned_model = keras_model.keras_model
+    keras_model.save()
+    keras_model = KerasModelTrainer.load(model_path)
+    loaded_model = keras_model.keras_model
+    for stored, loaded in zip(learned_model.weights, loaded_model.weights):
+        diff = stored - loaded
+        assert all(-0.0001 < diff < 0.0001)
     predictor = keras_model.make_predictor()
 
     metric = eval_model_on_tfds(test_ds, predictor)
@@ -129,17 +134,44 @@ def check_model_architecture(
 
 
 def test_overfit(tmpdir):
-    train_ds = tfds.load("tf_housing", split="train").take(4).cache()
+    train_ds = tfds.load("tf_housing", split="201912").take(4).cache()
     test_dir = os.path.dirname(os.path.realpath(__file__))
     config_dir = f"{test_dir}/../"
-    model_params_path = f"{config_dir}/model_params.json"
-    overfit_train_params_path = f"{config_dir}/overfit_train_params.json"
+    experiment_config_file = f"{config_dir}/experiment.json"
 
-    with open(model_params_path) as fin:
-        model_params = ModelParams.from_json(fin.read())
-
-    with open(overfit_train_params_path) as fin:
-        overfit_train_params = TrainParams.from_json(fin.read())
+    with open(experiment_config_file) as fin:
+        experiment_config = ExperimentSpec.from_json(fin.read())
 
     # check the model architecture does not have any error
-    check_model_architecture(model_params, tmpdir, train_ds, overfit_train_params)
+    check_model_architecture(experiment_config, Path(str(tmpdir)), train_ds)
+
+
+def test_save_load(tmpdir):
+    tmpdir = Path(str(tmpdir))
+    test_dir = os.path.dirname(os.path.realpath(__file__))
+
+    config_dir = f"{test_dir}/../"
+    experiment_config_file = f"{config_dir}/experiment.json"
+
+    with open(experiment_config_file) as fin:
+        experiment_config = ExperimentSpec.from_json(fin.read())
+        expected_trainer = KerasModelTrainer.build(experiment_config.modeling, tmpdir)
+        # experiment_config.training.epochs = 1
+        # train_job(experiment_config, str(tmpdir))
+
+    expected_trainer.save()
+    actual_trainer = KerasModelTrainer.load(tmpdir)
+
+    for actual_layer, expected_layer in zip(
+        actual_trainer.keras_model.layers, expected_trainer.keras_model.layers
+    ):
+        if not isinstance(actual_layer, keras.layers.InputLayer):
+            for w_actual, w_expected in zip(
+                actual_layer.get_weights(),
+                expected_layer.get_weights(),
+            ):
+                np.testing.assert_almost_equal(
+                    w_actual,
+                    w_expected,
+                    err_msg=f"{actual_layer.name} and {expected_layer.name}",
+                )

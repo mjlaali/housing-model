@@ -1,6 +1,7 @@
 import argparse
 import json
 from datetime import datetime
+from pathlib import Path
 
 import tensorflow as tf
 import tensorflow_datasets as tfds
@@ -49,7 +50,7 @@ def eval_model_on_tfds(
 
 def main(model_path: str):
     test_ds = tfds.load("tf_housing", split="test")
-    keras_model = KerasModelTrainer.load(model_path)
+    keras_model = KerasModelTrainer.load(Path(model_path))
     predictor = keras_model.make_predictor()
     metrics = eval_model_on_tfds(test_ds, predictor)
     print(json.dumps(metrics.value, indent=2, sort_keys=True))

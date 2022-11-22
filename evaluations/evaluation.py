@@ -5,6 +5,7 @@ import math
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from glob import glob
+from pathlib import Path
 from typing import Callable, Optional
 
 import numpy as np
@@ -12,7 +13,7 @@ import tqdm
 
 from housing_data_generator.date_model.data import Data, prepare_data
 from housing_data_generator.date_model.example import Example
-from housing_data_generator.date_model.utils import standardize_data
+from housing_data_generator.date_model.utils import standardize_data, load_from_files
 from housing_model.models.house_price_predictor import HousePricePredictor
 from housing_model.models.baselines import HouseSigmaHousePricePredictor
 from housing_model.models.keras_model import KerasModelTrainer
@@ -84,13 +85,14 @@ class Evaluation:
 
 
 def main(eval_file_pattern: str, model_path: Optional[str]):
-    files = glob(eval_file_pattern)
-    cleaned_rows = standardize_data(files)
+    paths = glob(eval_file_pattern)
+    data_stream = tqdm.tqdm(load_from_files(tqdm.tqdm(paths)))
+    cleaned_rows = standardize_data(data_stream)
     examples, _ = prepare_data(cleaned_rows)
     evaluation = Evaluation(PercentageErrorRate, examples)
 
     if model_path:
-        keras_model = KerasModelTrainer.load(model_path)
+        keras_model = KerasModelTrainer.load(Path(model_path))
         model = keras_model.make_predictor()
     else:
         model = HouseSigmaHousePricePredictor()

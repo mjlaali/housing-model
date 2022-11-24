@@ -1,3 +1,4 @@
+import random
 from datetime import datetime
 from unittest.mock import MagicMock
 
@@ -6,6 +7,8 @@ import optuna
 from housing_model.models.hyper_parameters_tuning import (
     HyperOptSpec,
     HyperParameterObjective,
+    VariableSpace,
+    DateGenerator,
 )
 from housing_model.models.keras_model import (
     ExperimentSpec,
@@ -20,11 +23,14 @@ from housing_model.models.keras_model import (
 
 def test_hyper_parameter_tuning():
     config = HyperOptSpec(
-        variables={
-            "lr": "trial.suggest_float('lr', 0, 1)",
-            "name": "f\"{trial.suggest_float('lr', 0, 1):.8f}\"",
-        },
-        name="name",
+        variables=[
+            VariableSpace(
+                name="lr",
+                generator="float_generator",
+                generator_config={"start": 0, "end": 1},
+            ),
+        ],
+        name="{lr:.8f}",
         output="dummy_output",
         template=ExperimentSpec(
             datasets=DatasetsSpec(
@@ -37,7 +43,7 @@ def test_hyper_parameter_tuning():
                 arc_params=ArchitectureParams({"a", "b"}),
             ),
             training=TrainParams(64, 100, learning_rate="{lr}"),
-        ),
+        ).to_dict(),
     )
 
     def train_op(exp_config: ExperimentSpec, output: str) -> float:
@@ -53,3 +59,15 @@ def test_hyper_parameter_tuning():
     study.optimize(obj, n_trials=10)
 
     assert mock_train_op.call_count == 10
+
+
+def test_suggest_date():
+    def rnd_gen(name, start, end):
+        return start + random.random() * (end - start)
+
+    trial = MagicMock()
+    trial.suggest_float = MagicMock(side_effect=rnd_gen)
+
+    generator = DateGenerator("dummy_name", "2010-01-01", "2010-01-02")
+    a_date = generator.generate(trial)
+    assert a_date == "2010-01-02"

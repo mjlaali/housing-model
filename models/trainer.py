@@ -2,6 +2,7 @@ import argparse
 import datetime
 import json
 import logging
+import pickle
 import shutil
 from datetime import timedelta
 from pathlib import Path
@@ -61,7 +62,7 @@ def train_job(
     train_ds = create_dataset(datasets, experiment_spec.datasets.train)
     dev_ds = create_dataset(datasets, experiment_spec.datasets.dev)
 
-    keras_model.fit_model(
+    hist = keras_model.fit_model(
         train_ds.shuffle(
             experiment_spec.training.batch_size * 1000, reshuffle_each_iteration=True
         ),
@@ -81,6 +82,9 @@ def train_job(
         eval_json = json.dumps(metrics.value, indent=2, sort_keys=True)
         eval_file.write(eval_json)
         print(eval_json)
+
+    with open(output_path / "hist.pkl", "wb") as hist_file:
+        pickle.dump(hist, hist_file)
     return metrics.value["med"]
 
 

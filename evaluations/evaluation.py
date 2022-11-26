@@ -14,9 +14,9 @@ import tqdm
 from housing_data_generator.date_model.data import Data, prepare_data
 from housing_data_generator.date_model.example import Example
 from housing_data_generator.date_model.utils import standardize_data, load_from_files
-from housing_model.models.house_price_predictor import HousePricePredictor
-from housing_model.models.baselines import HouseSigmaHousePricePredictor
-from housing_model.models.keras_model import KerasModelTrainer
+from housing_model.evaluations.house_price_predictor import HousePricePredictor
+from housing_model.modeling.baselines import HouseSigmaHousePricePredictor
+from housing_model.modeling.naive_deep.model_trainer import KerasModelTrainer
 
 _logger = logging.getLogger(__name__)
 

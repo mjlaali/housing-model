@@ -1,16 +1,16 @@
 {
   "variables": [
     {
-      "name": "start_date",
-      "generator": "date_generator",
+      "name": "idx",
+      "generator": "float_generator",
       "generator_config": {
-        "start": "2015-01-01",
-        "end": "2019-11-01"
+        "start": "100",
+        "end": "200"
       }
     }
   ],
-  "name": "{start_date}",
-  "output": "exp_on_start_date",
+  "name": "{idx}",
+  "output": "exp_training_stability",
   "template": {
     "modeling": {
       "hyper_params": {
@@ -45,7 +45,7 @@
     },
     "datasets": {
       "train": {
-        "start": "{start_date}",
+        "start": "2017-01-01",
         "end": "2019-12-01"
       },
       "dev": {

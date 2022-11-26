@@ -4,18 +4,22 @@ import json
 import logging
 import pickle
 import shutil
+from dataclasses import dataclass
 from datetime import timedelta
 from pathlib import Path
 from typing import Dict, List
 
 import tensorflow as tf
 import tensorflow_datasets as tfds
+from dataclasses_json import DataClassJsonMixin
 
 from housing_model.evaluations.keras_model_evaluator import eval_model_on_tfds
-from housing_model.models.keras_model import (
-    KerasModelTrainer,
-    ExperimentSpec,
+from housing_model.modeling.naive_deep.model_trainer import KerasModelTrainer
+from housing_model.modeling.naive_deep.configs import (
     DatasetSpec,
+    DatasetsSpec,
+    TrainParams,
+    ModelParams,
 )
 
 logger = logging.getLogger(__name__)
@@ -39,6 +43,13 @@ def create_dataset(
     final_dataset = tf.data.Dataset.choose_from_datasets(selected, choice_dataset)
 
     return final_dataset
+
+
+@dataclass
+class ExperimentSpec(DataClassJsonMixin):
+    datasets: DatasetsSpec
+    training: TrainParams
+    modeling: ModelParams
 
 
 def train_job(

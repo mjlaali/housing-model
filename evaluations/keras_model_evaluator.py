@@ -16,9 +16,9 @@ from housing_model.data.tf_housing.feature_names import (
     DATE_END,
 )
 from housing_model.evaluations.evaluation import Metric, Evaluation, PercentageErrorRate
-from housing_model.models.house_price_predictor import HousePricePredictor
+from housing_model.evaluations.house_price_predictor import HousePricePredictor
 
-from housing_model.models.keras_model import KerasModelTrainer
+from housing_model.modeling.naive_deep.model_trainer import KerasModelTrainer
 
 
 # TODO: write test for this function

@@ -4,20 +4,21 @@ from unittest.mock import MagicMock
 
 import optuna
 
-from housing_model.models.hyper_parameters_tuning import (
+from housing_model.training.hyper_parameters_tuning import (
     HyperOptSpec,
     HyperParameterObjective,
     VariableSpace,
-    DateGenerator,
+    hyper_parameters_tuning,
 )
-from housing_model.models.keras_model import (
-    ExperimentSpec,
-    DatasetSpec,
-    DatasetsSpec,
-    ModelParams,
+from housing_model.training.trainer import ExperimentSpec
+from housing_model.training.generators import DateGenerator
+from housing_model.modeling.naive_deep.configs import (
     HyperParams,
     ArchitectureParams,
+    DatasetSpec,
+    DatasetsSpec,
     TrainParams,
+    ModelParams,
 )
 
 
@@ -71,3 +72,7 @@ def test_suggest_date():
     generator = DateGenerator("dummy_name", "2010-01-01", "2010-01-02")
     a_date = generator.generate(trial)
     assert a_date == "2010-01-02"
+
+
+def test_hyper(tmpdir):
+    hyper_parameters_tuning(HyperOptSpec([], "name", "output", {}), tmpdir, 10)

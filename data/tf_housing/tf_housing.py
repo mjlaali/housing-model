@@ -21,6 +21,12 @@ from housing_model.data.tf_housing.feature_names import (
     DATE_END,
     METADATA,
     ML_NUM,
+    BEDROOM,
+    WASHROOM,
+    HOUSE_TYPE,
+    PARKING,
+    BASEMENT,
+    SELLER_PRICE,
 )
 from housing_model.data.tf_housing.utils import path_generator, clean_paths
 
@@ -69,6 +75,12 @@ class TfHousing(tfds.core.GeneratorBasedBuilder):
                     LAND_FRONT: tf.float32,
                     LAND_DEPTH: tf.float32,
                     DATE_END: tf.float32,
+                    BEDROOM: tf.int32,
+                    WASHROOM: tf.int32,
+                    HOUSE_TYPE: tf.string,
+                    PARKING: tf.int32,
+                    BASEMENT: tf.string,
+                    SELLER_PRICE: tf.float32,
                     METADATA: {ML_NUM: tf.string},
                 }
             ),
@@ -118,6 +130,14 @@ class TfHousing(tfds.core.GeneratorBasedBuilder):
             DATE_END: (ex.features.date_end - datetime(1970, 1, 1)).total_seconds()
             // 3600
             // 24,
+            BEDROOM: ex.features.bedroom
+            or 0,  # Convert missing values to 0, there are only a few of them
+            WASHROOM: ex.features.washroom
+            or 0,  # Convert missing values to 0, there are only a few of them
+            HOUSE_TYPE: ex.features.house_type,  # Convert missing values to 0, there are only a few of them
+            PARKING: ex.features.parking or 0,
+            BASEMENT: ex.features.basement,
+            SELLER_PRICE: ex.features.seller_price,
             METADATA: {ML_NUM: ex.ml_num},
         }
 

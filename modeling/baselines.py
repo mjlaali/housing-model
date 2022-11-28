@@ -7,3 +7,8 @@ from housing_model.evaluations.house_price_predictor import HousePricePredictor
 class HouseSigmaHousePricePredictor(HousePricePredictor):
     def predict(self, features: Features) -> Optional[float]:
         return features.house_sigma_estimation
+
+
+class SellerPricePredictor(HousePricePredictor):
+    def predict(self, features: Features) -> Optional[float]:
+        return features.seller_price

@@ -15,7 +15,10 @@ from housing_data_generator.date_model.data import Data, prepare_data
 from housing_data_generator.date_model.example import Example
 from housing_data_generator.date_model.utils import standardize_data, load_from_files
 from housing_model.evaluations.house_price_predictor import HousePricePredictor
-from housing_model.modeling.baselines import HouseSigmaHousePricePredictor
+from housing_model.modeling.baselines import (
+    HouseSigmaHousePricePredictor,
+    SellerPricePredictor,
+)
 from housing_model.modeling.naive_deep.model_trainer import KerasModelTrainer
 
 _logger = logging.getLogger(__name__)
@@ -84,6 +87,12 @@ class Evaluation:
         return metric
 
 
+baselines = {
+    "house_sigma": HousePricePredictor,
+    "seller_price": SellerPricePredictor,
+}
+
+
 def main(eval_file_pattern: str, model_path: Optional[str]):
     paths = glob(eval_file_pattern)
     data_stream = tqdm.tqdm(load_from_files(tqdm.tqdm(paths)))
@@ -91,11 +100,11 @@ def main(eval_file_pattern: str, model_path: Optional[str]):
     examples, _ = prepare_data(cleaned_rows)
     evaluation = Evaluation(PercentageErrorRate, examples)
 
-    if model_path:
+    if model_path in baselines:
+        model = baselines[model_path]()
+    else:
         keras_model = KerasModelTrainer.load(Path(model_path))
         model = keras_model.make_predictor()
-    else:
-        model = HouseSigmaHousePricePredictor()
 
     metrics = evaluation.eval(model)
     print(json.dumps(metrics.value, indent=2))

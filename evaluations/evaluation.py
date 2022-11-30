@@ -43,26 +43,39 @@ class PercentageErrorRate(Metric):
     def __init__(self):
         self._values = []
         self._total_cnt = 0
-        self._outlier = 0
+        self._none_value = 0
 
-    def compute(self, example: Example, prediction: float):
+    def compute(self, example: Example, prediction: Optional[float]):
         self._total_cnt += 1
         if prediction is not None:
             val = math.fabs(example.sold_price - prediction) / example.sold_price
             self.values.append(val)
-            if val > 1.0:
-                self._outlier += 1
+        else:
+            self._none_value += 1
 
     @property
     def value(self) -> dict:
         values = self.values
+        bins = np.arange(0, 1, 0.1)
+        max_val = np.max(values)
+        if max_val > 1.0:
+            bins = np.append(bins, max_val)
+        pdf, bin_edges = np.histogram(values, bins=bins, density=True)
+        cdf = np.cumsum(pdf * np.diff(bin_edges))
         return {
             "cnt": self._total_cnt,
+            "none_values": {
+                "cnt": self._none_value,
+                "rate": self._none_value / self._total_cnt,
+            },
             "mean": np.mean(values),
             "med": np.median(values),
             "var": np.std(values),
-            "outlier_cnt": self._outlier,
-            "outlier_rate": self._outlier / self._total_cnt,
+            "hist": {
+                "pdf": pdf.tolist(),
+                "edges": bin_edges.tolist(),
+                "cdf": cdf.tolist(),
+            },
         }
 
     @property
@@ -88,7 +101,7 @@ class Evaluation:
 
 
 baselines = {
-    "house_sigma": HousePricePredictor,
+    "house_sigma": HouseSigmaHousePricePredictor,
     "seller_price": SellerPricePredictor,
 }
 

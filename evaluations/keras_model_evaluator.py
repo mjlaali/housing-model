@@ -14,6 +14,12 @@ from housing_model.data.tf_housing.feature_names import (
     LAND_FRONT,
     LAND_DEPTH,
     DATE_END,
+    HOUSE_TYPE,
+    BEDROOM,
+    WASHROOM,
+    PARKING,
+    BASEMENT,
+    SELLER_PRICE,
 )
 from housing_model.evaluations.evaluation import Metric, Evaluation, PercentageErrorRate
 from housing_model.evaluations.house_price_predictor import HousePricePredictor
@@ -31,6 +37,7 @@ def eval_model_on_tfds(
                 ml_num="N/A",
                 sold_price=int(ex[SOLD_PRICE].numpy().item()),
                 features=Features(
+                    house_type=ex[HOUSE_TYPE].numpy().item(),
                     house_sigma_estimation=0.0,
                     map_lat=ex[MAP_LAT].numpy().item(),
                     map_lon=ex[MAP_LON].numpy().item(),
@@ -40,6 +47,11 @@ def eval_model_on_tfds(
                         int(ex[DATE_END].numpy().item() * 24 * 3600)
                         + datetime(1970, 1, 1).timestamp()
                     ),
+                    bedroom=ex[BEDROOM].numpy().item(),
+                    washroom=ex[WASHROOM].numpy().item(),
+                    parking=ex[PARKING].numpy().item(),
+                    basement=ex[BASEMENT].numpy().item(),
+                    seller_price=ex[SELLER_PRICE].numpy().item(),
                 ),
             )
 

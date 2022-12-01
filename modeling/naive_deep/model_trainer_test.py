@@ -9,9 +9,15 @@ import tensorflow as tf
 import tensorflow_datasets as tfds
 
 from housing_model.evaluations.keras_model_evaluator import eval_model_on_tfds
-from housing_model.modeling.model_trainer import KerasModelTrainer, AdaptiveLoss
-from housing_model.modeling.configs import DatasetSpec, TrainParams, ExperimentSpec
-from housing_model.training.trainer import train_job
+from housing_model.modeling.naive_deep.model_trainer import (
+    KerasModelTrainer,
+    AdaptiveLoss,
+)
+from housing_model.modeling.naive_deep.configs import (
+    DatasetSpec,
+    TrainParams,
+)
+from housing_model.training.trainer import train_job, ExperimentSpec
 
 
 def get_overfit_loss(
@@ -77,7 +83,7 @@ def test_save_load(tmpdir):
     tmpdir = Path(str(tmpdir))
     test_dir = os.path.dirname(os.path.realpath(__file__))
 
-    config_dir = f"{test_dir}/../"
+    config_dir = f"{test_dir}/../../"
     experiment_config_file = f"{config_dir}/experiment.json"
 
     with open(experiment_config_file) as fin:

@@ -78,11 +78,11 @@ def hyper_parameters_tuning(config: HyperOptSpec, output: str, n_trials: int):
 
     output_path = Path(output) / study_name
     output_path.mkdir(parents=True, exist_ok=True)
-    os.chdir(output_path)
     with open(output_path / "hyper-params-config.json", "w") as config_file:
         config_file.write(config.to_json(indent=2))
 
     storage_name = f"sqlite:///{study_name}.db"
+    os.chdir(output_path)
     study = optuna.create_study(
         study_name=study_name, storage=storage_name, load_if_exists=True
     )

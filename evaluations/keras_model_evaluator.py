@@ -37,7 +37,6 @@ def eval_model_on_tfds(
                 ml_num="N/A",
                 sold_price=int(ex[SOLD_PRICE].numpy().item()),
                 features=Features(
-                    house_type=ex[HOUSE_TYPE].numpy().item(),
                     house_sigma_estimation=0.0,
                     map_lat=ex[MAP_LAT].numpy().item(),
                     map_lon=ex[MAP_LON].numpy().item(),
@@ -50,8 +49,9 @@ def eval_model_on_tfds(
                     bedroom=ex[BEDROOM].numpy().item(),
                     washroom=ex[WASHROOM].numpy().item(),
                     parking=ex[PARKING].numpy().item(),
-                    basement=ex[BASEMENT].numpy().item(),
-                    seller_price=ex[SELLER_PRICE].numpy().item(),
+                    house_type=str(ex[HOUSE_TYPE].numpy(), "utf-8"),
+                    basement=str(ex[BASEMENT].numpy(), "utf-8"),
+                    seller_price=int(ex[SELLER_PRICE].numpy()),
                 ),
             )
 

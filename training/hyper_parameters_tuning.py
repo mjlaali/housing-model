@@ -78,8 +78,8 @@ class HyperParameterObjective:
     def make_uniqu_name(self, config_dict, variables):
         exp_config = ExperimentSpec.from_dict(config_dict)
         custom_name = self.config.name.format(**variables).replace("'", "")  # Remove
-        config_hash = sha1(json.dumps(exp_config, sort_keys=True))[:10]
-        trial_name = f"{custom_name}_{config_hash}"
+        config_hash = sha1(exp_config.to_json(sort_keys=True).encode('ascii'))
+        trial_name = f"{custom_name}_{config_hash.hexdigest()[:10]}"
         return exp_config, trial_name
 
 

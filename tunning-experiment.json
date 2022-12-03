@@ -10,7 +10,7 @@
     }
   ],
   "name": "{start_date}",
-  "output": "exp_on_start_date",
+  "output": "exp_on_start_date_2",
   "template": {
     "modeling": {
       "hyper_params": {

@@ -69,7 +69,7 @@ def check_model_architecture(
 def test_overfit(tmpdir):
     train_ds = tfds.load("tf_housing", split="201912").take(4).cache()
     test_dir = os.path.dirname(os.path.realpath(__file__))
-    config_dir = f"{test_dir}/../"
+    config_dir = f"{test_dir}/../../"
     experiment_config_file = f"{config_dir}/experiment.json"
 
     with open(experiment_config_file) as fin:

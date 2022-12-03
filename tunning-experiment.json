@@ -2,7 +2,7 @@
   "variables": [
     {
       "name": "idx",
-      "generator": "float_generator",
+      "generator": "int_generator",
       "generator_config": {
         "start": "100",
         "end": "200"

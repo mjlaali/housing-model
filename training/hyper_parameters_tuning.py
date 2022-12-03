@@ -1,5 +1,6 @@
 import argparse
 import os
+import shutil
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Tuple, Any, Callable, Union, List
@@ -8,10 +9,10 @@ import optuna
 import yaml
 from dataclasses_json import DataClassJsonMixin
 
-from housing_model.training.generators import FloatGenerator, DateGenerator
+from housing_model.training.generators import FloatGenerator, DateGenerator, IntGenerator
 from housing_model.training.trainer import train_job, ExperimentSpec
 
-suggester_factory = {"date_generator": DateGenerator, "float_generator": FloatGenerator}
+suggester_factory = {"date_generator": DateGenerator, "float_generator": FloatGenerator, "int_generator": IntGenerator}
 
 
 @dataclass
@@ -37,6 +38,7 @@ class HyperOptSpec(DataClassJsonMixin):
 class HyperParameterObjective:
     config: HyperOptSpec
     train_op: Callable[[ExperimentSpec, str], float]
+    experience_path: Path
 
     def __post_init__(self):
         self._template_str = (
@@ -48,7 +50,7 @@ class HyperParameterObjective:
 
     def __call__(self, trial: optuna.Trial) -> float:
         name, exp_config = self._create_exp_config(trial)
-        return self.train_op(exp_config, f"{self.config.output}/{name}")
+        return self.train_op(exp_config, str(self.experience_path / name))
 
     def _create_exp_config(self, trial: optuna.Trial) -> Tuple[str, ExperimentSpec]:
         variables: Dict[str, Union[int, str]] = {}
@@ -77,17 +79,18 @@ def hyper_parameters_tuning(config: HyperOptSpec, output: str, n_trials: int):
     study_name = config.output  # Unique identifier of the study.
 
     output_path = Path(output) / study_name
+    if output_path.exists():
+        shutil.rmtree(output_path)
     output_path.mkdir(parents=True, exist_ok=True)
     with open(output_path / "hyper-params-config.json", "w") as config_file:
         config_file.write(config.to_json(indent=2))
 
-    storage_name = f"sqlite:///{study_name}.db"
-    os.chdir(output_path)
+    storage_name = f"sqlite:////{os.path.abspath(output_path)}/{study_name}.db"
     study = optuna.create_study(
         study_name=study_name, storage=storage_name, load_if_exists=True
     )
 
-    study.optimize(HyperParameterObjective(config, train_job), n_trials=n_trials)
+    study.optimize(HyperParameterObjective(config, train_job, output_path), n_trials=n_trials)
 
 
 def main(exp_template: str, output: str, n_trials: int):

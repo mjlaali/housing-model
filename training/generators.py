@@ -17,11 +17,20 @@ class Generator(ABC):
 
 @dataclass
 class FloatGenerator(Generator):
+    start: float
+    end: float
+
+    def generate(self, trial: Trial) -> Any:
+        return trial.suggest_float(self.name, self.start, self.end)
+
+
+@dataclass
+class IntGenerator(Generator):
     start: int
     end: int
 
     def generate(self, trial: Trial) -> Any:
-        return trial.suggest_float(self.name, self.start, self.end)
+        return trial.suggest_int(self.name, self.start, self.end)
 
 
 @dataclass
@@ -38,7 +47,7 @@ class DateGenerator(Generator):
         self._day_range = self._end_days - start_days
 
     def generate(self, trial: Trial) -> Any:
-        random_day = trial.suggest_int(self.name, 0, self._day_range)
+        random_day = trial.suggest_float(self.name, 0, self._day_range)
         total_secs = (self._end_days - random_day) * 3600 * 24
         date_str = datetime.fromtimestamp(total_secs).strftime("%Y-%m-%d")
         return date_str

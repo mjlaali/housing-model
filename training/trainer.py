@@ -94,8 +94,8 @@ def train_job(
         eval_file.write(eval_json)
         print(eval_json)
 
-    with open(output_path / "hist.pkl", "wb") as hist_file:
-        pickle.dump(hist, hist_file)
+    with open(output_path / "hist.json", "w") as hist_file:
+        hist_file.write(json.dumps(hist.history, indent=2, sort_keys=True))
     return metrics.value["med"]
 
 

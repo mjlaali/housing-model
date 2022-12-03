@@ -1,7 +1,9 @@
 import argparse
+import json
 import os
 import shutil
 from dataclasses import dataclass
+from hashlib import sha1
 from pathlib import Path
 from typing import Dict, Tuple, Any, Callable, Union, List
 
@@ -70,9 +72,15 @@ class HyperParameterObjective:
         except KeyError as e:
             raise ValueError(f"cannot format with {str(variables)}") from e
 
-        exp_config = ExperimentSpec.from_dict(config_dict)
-        trial_name = self.config.name.format(**variables)
+        exp_config, trial_name = self.make_uniqu_name(config_dict, variables)
         return trial_name, exp_config
+
+    def make_uniqu_name(self, config_dict, variables):
+        exp_config = ExperimentSpec.from_dict(config_dict)
+        custom_name = self.config.name.format(**variables).replace("'", "")  # Remove
+        config_hash = sha1(json.dumps(exp_config, sort_keys=True))[:10]
+        trial_name = f"{custom_name}_{config_hash}"
+        return exp_config, trial_name
 
 
 def hyper_parameters_tuning(config: HyperOptSpec, output: str, n_trials: int):

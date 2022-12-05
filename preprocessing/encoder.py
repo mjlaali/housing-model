@@ -115,7 +115,7 @@ class Scale(StatelessTransformation):
 
 class PositionEncoder(StatelessTransformation):
     def __init__(self, dim, scale):
-        i = 2 * np.arange(dim) // 2
+        i = np.arange(2 * dim) // 2
         self._angle_rates = 1 / np.power(scale, i / np.float32(dim))
 
     def process(self, raw: int) -> list:

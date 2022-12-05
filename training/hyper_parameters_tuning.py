@@ -3,6 +3,7 @@ import json
 import os
 import shutil
 from dataclasses import dataclass
+from datetime import datetime
 from hashlib import sha1
 from pathlib import Path
 from typing import Dict, Tuple, Any, Callable, Union, List
@@ -11,10 +12,18 @@ import optuna
 import yaml
 from dataclasses_json import DataClassJsonMixin
 
-from housing_model.training.generators import FloatGenerator, DateGenerator, IntGenerator
+from housing_model.training.generators import (
+    FloatGenerator,
+    DateGenerator,
+    IntGenerator,
+)
 from housing_model.training.trainer import train_job, ExperimentSpec
 
-suggester_factory = {"date_generator": DateGenerator, "float_generator": FloatGenerator, "int_generator": IntGenerator}
+suggester_factory = {
+    "date_generator": DateGenerator,
+    "float_generator": FloatGenerator,
+    "int_generator": IntGenerator,
+}
 
 
 @dataclass
@@ -78,8 +87,8 @@ class HyperParameterObjective:
     def make_uniqu_name(self, config_dict, variables):
         exp_config = ExperimentSpec.from_dict(config_dict)
         custom_name = self.config.name.format(**variables).replace("'", "")  # Remove
-        config_hash = sha1(exp_config.to_json(sort_keys=True).encode('ascii'))
-        trial_name = f"{custom_name}_{config_hash.hexdigest()[:10]}"
+        timestamp = (datetime(2000, 1, 1) - datetime.now()).total_seconds()
+        trial_name = f"{custom_name}_{int(timestamp)}"
         return exp_config, trial_name
 
 
@@ -98,7 +107,9 @@ def hyper_parameters_tuning(config: HyperOptSpec, output: str, n_trials: int):
         study_name=study_name, storage=storage_name, load_if_exists=True
     )
 
-    study.optimize(HyperParameterObjective(config, train_job, output_path), n_trials=n_trials)
+    study.optimize(
+        HyperParameterObjective(config, train_job, output_path), n_trials=n_trials
+    )
 
 
 def main(exp_template: str, output: str, n_trials: int):

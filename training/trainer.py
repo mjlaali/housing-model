@@ -2,7 +2,6 @@ import argparse
 import datetime
 import json
 import logging
-import pickle
 import shutil
 from dataclasses import dataclass
 from datetime import timedelta
@@ -14,13 +13,13 @@ import tensorflow_datasets as tfds
 from dataclasses_json import DataClassJsonMixin
 
 from housing_model.evaluations.keras_model_evaluator import eval_model_on_tfds
-from housing_model.modeling.naive_deep.model_trainer import KerasModelTrainer
 from housing_model.modeling.naive_deep.configs import (
     DatasetSpec,
     DatasetsSpec,
     TrainParams,
     ModelParams,
 )
+from housing_model.modeling.naive_deep.model_trainer import KerasModelTrainer
 
 logger = logging.getLogger(__name__)
 
@@ -103,6 +102,7 @@ def main(
     experiment: str,
     output: str,
 ):
+    logging.basicConfig(level=logging.INFO)
     with open(experiment) as fin:
         experiment_spec = ExperimentSpec.from_json(fin.read())
 

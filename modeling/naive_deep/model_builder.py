@@ -102,3 +102,6 @@ class ModelBuilder:
         )
 
         return self.model
+
+    def adapt(self, dataset: tf.data.Dataset):
+        pass

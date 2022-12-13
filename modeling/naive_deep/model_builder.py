@@ -31,12 +31,12 @@ class ModelBuilder:
     model: Optional[tf.keras.Model] = field(init=False)
 
     def build(self) -> tf.keras:
-        inputs = []
+        inputs = {}
         input_features = []
 
         for feature in self.model_params.arc_params.float_features:
             an_input = tf.keras.layers.Input(name=feature, shape=(), dtype="float32")
-            inputs.append(an_input)
+            inputs[feature] = an_input
             expanded_input = tf.keras.layers.Lambda(
                 lambda x: tf.expand_dims(x, axis=-1)
             )(an_input)

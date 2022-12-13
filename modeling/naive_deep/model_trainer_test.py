@@ -7,17 +7,39 @@ import keras.layers
 import numpy as np
 import tensorflow as tf
 import tensorflow_datasets as tfds
+from keras.utils import io_utils
+from keras.utils import tf_utils
 
 from housing_model.evaluations.keras_model_evaluator import eval_model_on_tfds
-from housing_model.modeling.naive_deep.model_trainer import (
-    KerasModelTrainer,
-    AdaptiveLoss,
-)
 from housing_model.modeling.naive_deep.configs import (
     DatasetSpec,
     TrainParams,
 )
+from housing_model.modeling.naive_deep.model_trainer import (
+    KerasModelTrainer,
+    AdaptiveLoss,
+)
 from housing_model.training.trainer import train_job, ExperimentSpec
+
+
+class TerminateOnAlmostZeroLoss(tf.keras.callbacks.Callback):
+    """Callback that terminates training when a NaN loss is encountered."""
+
+    def __init__(self, almost_zero, metric_key="loss"):
+        super().__init__()
+        self._metric_key = metric_key
+        self._almost_zero = almost_zero
+
+    def on_batch_end(self, batch, logs=None):
+        logs = logs or {}
+        loss = logs.get(self._metric_key)
+        if loss is not None:
+            loss = tf_utils.sync_to_numpy_or_python_type(loss)
+            if loss <= self._almost_zero:
+                io_utils.print_msg(
+                    f"Batch {batch}: loss is almost zero"
+                )
+                self.model.stop_training = True
 
 
 def get_overfit_loss(
@@ -30,6 +52,7 @@ def get_overfit_loss(
         train_ds,
         train_ds.take(dataset_size).cache(),
         overfit_train_params,
+        additional_callbacks=[TerminateOnAlmostZeroLoss(almost_zero=0.0001)]
     )
     return hist.history["loss"][-1]
 
@@ -51,9 +74,9 @@ def check_model_architecture(
     keras_model.save()
     keras_model = KerasModelTrainer.load(model_path)
     loaded_model = keras_model.keras_model
-    for stored, loaded in zip(learned_model.weights, loaded_model.weights):
-        diff = stored - loaded
-        assert all(-0.0001 < diff < 0.0001)
+
+    keras_models_are_almost_equal(learned_model, loaded_model)
+
     predictor = keras_model.make_predictor()
 
     metric = eval_model_on_tfds(test_ds, predictor)
@@ -98,13 +121,17 @@ def test_save_load(tmpdir):
     expected_trainer.save()
     actual_trainer = KerasModelTrainer.load(tmpdir)
 
+    keras_models_are_almost_equal(actual_trainer.keras_model, expected_trainer.keras_model)
+
+
+def keras_models_are_almost_equal(actual_model: tf.keras.models.Model, expected_model: tf.keras.models.Model):
     for actual_layer, expected_layer in zip(
-        actual_trainer.keras_model.layers, expected_trainer.keras_model.layers
+            actual_model.layers, expected_model.layers
     ):
         if not isinstance(actual_layer, keras.layers.InputLayer):
             for w_actual, w_expected in zip(
-                actual_layer.get_weights(),
-                expected_layer.get_weights(),
+                    actual_layer.get_weights(),
+                    expected_layer.get_weights(),
             ):
                 np.testing.assert_almost_equal(
                     w_actual,

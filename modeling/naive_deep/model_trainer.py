@@ -2,7 +2,7 @@ import base64
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Callable
+from typing import Optional, Callable, Tuple, List, Dict
 
 import dill
 import tensorflow as tf
@@ -36,37 +36,61 @@ class KerasModelTrainer:
         train_ds: tf.data.Dataset,
         dev_ds: tf.data.Dataset,
         train_params: TrainParams,
+        additional_callbacks: Optional[List[tf.keras.callbacks.Callback]] = None
     ) -> tf.keras.callbacks.History:
-        keras_model = self.keras_model
+        self.data_provider.setup_preprocessors(train_ds, 10000)
 
+        keras_model = self.data_provider.add_preprocessors(self.keras_model)
+
+        loss, loss_callbacks = self._get_loss()
+        keras_model.compile(
+            optimizer=tf.keras.optimizers.Adam(
+                learning_rate=train_params.learning_rate
+            ),
+            loss=loss,
+        )
+
+        callbacks: List[tf.keras.callbacks.Callback] = self._build_callbacks(train_params)
+        callbacks += loss_callbacks + additional_callbacks if additional_callbacks else []
+
+        hist = keras_model.fit(
+            self.data_provider.setup_data(train_ds, train_params.batch_size),
+            validation_data=self.data_provider.setup_data(
+                dev_ds, train_params.batch_size
+            ),
+            epochs=train_params.epochs,
+            callbacks=callbacks,
+        )
+        self.keras_model = keras_model
+        return hist
+
+    def _get_loss(self) -> Tuple[Dict[str, Callable], List[tf.keras.callbacks.Callback]]:
         arc_params = self.model_builder.model_params.arc_params
         bit_loss_weight = self.model_params.hyper_params.bit_loss_weight
         assert 0 <= bit_loss_weight <= 1
 
         price_loss = AdaptiveLoss(
             "mean_squared_logarithmic_error",
-            weight_fn=lambda epoch, w_init: 1 - w_init**epoch,
+            weight_fn=lambda epoch, w_init: 1 - w_init ** epoch,
             w_init=bit_loss_weight,
             name="w_price",
             verbose=1,
         )
         bit_loss = AdaptiveLoss(
             "binary_crossentropy",
-            weight_fn=lambda epoch, w_init: w_init**epoch,
+            weight_fn=lambda epoch, w_init: w_init ** epoch,
             w_init=bit_loss_weight,
             name="w_bits",
             verbose=1,
         )
-        keras_model.compile(
-            optimizer=tf.keras.optimizers.Adam(
-                learning_rate=train_params.learning_rate
-            ),
-            loss={
-                arc_params.price_feature_name: price_loss,
-                arc_params.bits_feature_name: bit_loss,
-            },
-        )
+        loss: Dict[str, tf.keras.losses.Loss] = {
+            arc_params.price_feature_name: price_loss,
+            arc_params.bits_feature_name: bit_loss,
+        }
+        return loss, [price_loss, bit_loss]
 
+    def _build_callbacks(self, train_params):
+        arc_params = self.model_builder.model_params.arc_params
         callbacks = []
 
         logdir = "logs/scalars/" + datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -79,19 +103,7 @@ class KerasModelTrainer:
             ] = f"val_{arc_params.price_feature_name}_loss"
         callbacks.append(tf.keras.callbacks.EarlyStopping(**early_stopping_settings))
 
-        callbacks.append(price_loss)
-        callbacks.append(bit_loss)
-
-        hist = keras_model.fit(
-            self.data_provider.setup_data(train_ds, train_params.batch_size),
-            validation_data=self.data_provider.setup_data(
-                dev_ds, train_params.batch_size
-            ),
-            epochs=train_params.epochs,
-            callbacks=callbacks,
-        )
-        self.keras_model = keras_model
-        return hist
+        return callbacks
 
     def make_predictor(self) -> HousePricePredictor:
         return KerasHousePricePredictor(
@@ -147,7 +159,7 @@ class UpdateOnEpoch(tf.keras.callbacks.Callback):
     def on_epoch_end(self, epoch, logs=None):
         new_alpha = self.init_alpha ** (epoch // 5)
         self.alpha.assign(new_alpha)
-        self.beta.assign(1 - self.alpha)
+        self.beta.assign(-self.alpha + 1)
         io_utils.print_msg(
             f"\nThe value of alpha and beta are updated to '{self.alpha.numpy()} and {self.beta.numpy()}'."
         )
@@ -165,7 +177,7 @@ class AdaptiveLoss(tf.keras.callbacks.Callback):
         self._loss_fn = tf.keras.losses.get(self.loss_fn_id)
         self._weight = self.w_init
 
-    def __call__(self, y_true, y_pred):
+    def __call__(self, y_true, y_pred, sample_weight=None):
         return self._weight * self._loss_fn(y_true, y_pred)
 
     def on_epoch_end(self, epoch, logs=None):

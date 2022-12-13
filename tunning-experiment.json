@@ -1,22 +1,38 @@
 {
   "variables": [
     {
-      "name": "month",
+      "name": "num_dense",
       "generator": "int_generator",
       "generator_config": {
-        "start": 11,
-        "end": 12
+        "start": 2,
+        "end": 4
+      }
+    },
+    {
+      "name": "embedding_size",
+      "generator": "int_generator",
+      "generator_config": {
+        "start": 64,
+        "end": 512
+      }
+    },
+    {
+      "name": "num_feature_dense",
+      "generator": "int_generator",
+      "generator_config": {
+        "start": 1,
+        "end": 4
       }
     }
   ],
-  "name": "{month}",
-  "output": "exp_on_one_month",
+  "name": "{num_dense}-{num_feature_dense}-{embedding_size}",
+  "output": "exp_dese_depth_and_embd_size",
   "template": {
     "modeling": {
       "hyper_params": {
-        "embedding_size": 256,
-        "num_feature_dense": 4,
-        "num_dense": 2,
+        "embedding_size": "{embedding_size}",
+        "num_feature_dense": "{num_feature_dense}",
+        "num_dense": "{num_dense}",
         "bit_loss_weight": 0.7
       },
       "arc_params": {
@@ -41,7 +57,7 @@
       "epochs": 10000,
       "learning_rate": 0.001,
       "early_stopping": {
-        "patience": 1000,
+        "patience": 100,
         "verbose": 1,
         "mode": "min",
         "restore_best_weights": true
@@ -49,7 +65,7 @@
     },
     "datasets": {
       "train": {
-        "start": "2019-11-01",
+        "start": "2017-01-01",
         "end": "2019-12-01"
       },
       "dev": {

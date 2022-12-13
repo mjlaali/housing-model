@@ -1,17 +1,10 @@
 import random
 from datetime import datetime
+from pathlib import Path
 from unittest.mock import MagicMock
 
 import optuna
 
-from housing_model.training.hyper_parameters_tuning import (
-    HyperOptSpec,
-    HyperParameterObjective,
-    VariableSpace,
-    hyper_parameters_tuning,
-)
-from housing_model.training.trainer import ExperimentSpec
-from housing_model.training.generators import DateGenerator
 from housing_model.modeling.naive_deep.configs import (
     HyperParams,
     ArchitectureParams,
@@ -20,9 +13,16 @@ from housing_model.modeling.naive_deep.configs import (
     TrainParams,
     ModelParams,
 )
+from housing_model.training.generators import DateGenerator
+from housing_model.training.hyper_parameters_tuning import (
+    HyperOptSpec,
+    HyperParameterObjective,
+    VariableSpace,
+)
+from housing_model.training.trainer import ExperimentSpec
 
 
-def test_hyper_parameter_tuning():
+def test_hyper_parameter_tuning(tmpdir):
     config = HyperOptSpec(
         variables=[
             VariableSpace(
@@ -50,12 +50,13 @@ def test_hyper_parameter_tuning():
     def train_op(exp_config: ExperimentSpec, output: str) -> float:
         lr = exp_config.training.learning_rate
         assert 0 <= lr < 1.0
-        assert output.endswith(f"{lr:.8f}")
+        output_name = Path(output).name
+        assert output_name.startswith(f"{lr:.8f}"), f"{output_name} does not start with {lr:.8f}"
         return lr
 
     mock_train_op = MagicMock(side_effect=train_op)
 
-    obj = HyperParameterObjective(config, mock_train_op)
+    obj = HyperParameterObjective(config, mock_train_op, experience_path=Path(tmpdir))
     study = optuna.create_study()
     study.optimize(obj, n_trials=10)
 
@@ -71,8 +72,5 @@ def test_suggest_date():
 
     generator = DateGenerator("dummy_name", "2010-01-01", "2010-01-02")
     a_date = generator.generate(trial)
-    assert a_date == "2010-01-02"
+    assert a_date == "2010-01-01"
 
-
-def test_hyper(tmpdir):
-    hyper_parameters_tuning(HyperOptSpec([], "name", "output", {}), tmpdir, 10)

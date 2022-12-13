@@ -20,7 +20,7 @@ def test_bits_to_num():
 
 def test_model_builder_input_output():
     model_builder = ModelBuilder(
-        ModelParams(HyperParams(embedding_size=5), ArchitectureParams({"f1", "f2"}))
+        ModelParams(HyperParams(embedding_size=5, num_dense=2, num_feature_dense=2, bit_loss_weight=0.1), ArchitectureParams({"f1", "f2"}))
     )
 
     model = model_builder.build()
@@ -30,7 +30,7 @@ def test_model_builder_input_output():
 
 def test_model_builder_generate_price():
     model_builder = ModelBuilder(
-        ModelParams(HyperParams(embedding_size=5), ArchitectureParams({"f1", "f2"}))
+        ModelParams(HyperParams(embedding_size=5, num_dense=2, num_feature_dense=2, bit_loss_weight=0.1), ArchitectureParams({"f1", "f2"}))
     )
 
     model = model_builder.build()
@@ -52,7 +52,7 @@ def test_model_overfit():
     num_bits = 3
     model_builder = ModelBuilder(
         ModelParams(
-            HyperParams(embedding_size=5),
+            HyperParams(embedding_size=5, num_dense=2, num_feature_dense=2, bit_loss_weight=0.1),
             ArchitectureParams({"f1", "f2"}, num_bits=num_bits),
         )
     )

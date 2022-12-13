@@ -87,7 +87,7 @@ class HyperParameterObjective:
     def make_uniqu_name(self, config_dict, variables):
         exp_config = ExperimentSpec.from_dict(config_dict)
         custom_name = self.config.name.format(**variables).replace("'", "")  # Remove
-        timestamp = (datetime(2000, 1, 1) - datetime.now()).total_seconds()
+        timestamp = (datetime.now() - datetime(2000, 1, 1)).total_seconds()
         trial_name = f"{custom_name}_{int(timestamp)}"
         return exp_config, trial_name
 

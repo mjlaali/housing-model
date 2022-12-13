@@ -41,6 +41,7 @@ class KerasModelTrainer:
         self.data_provider.setup_preprocessors(train_ds, 10000)
 
         keras_model = self.data_provider.add_preprocessors(self.keras_model)
+        # keras_model = self.keras_model
 
         loss, loss_callbacks = self._get_loss()
         keras_model.compile(
@@ -83,7 +84,7 @@ class KerasModelTrainer:
             name="w_bits",
             verbose=1,
         )
-        loss: Dict[str, tf.keras.losses.Loss] = {
+        loss: Dict[str, Callable] = {
             arc_params.price_feature_name: price_loss,
             arc_params.bits_feature_name: bit_loss,
         }

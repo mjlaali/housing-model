@@ -1,0 +1,65 @@
+{
+  "variables": [
+    {
+      "name": "dummy_generator",
+      "generator": "int_generator",
+      "generator_config": {
+        "start": 1,
+        "end": 10
+      }
+    }
+  ],
+  "name": "{dummy_generator}",
+  "output": "exp_dummy",
+  "template": {
+    "modeling": {
+      "hyper_params": {
+        "embedding_size": 128,
+        "num_feature_dense": 2,
+        "num_dense": 2,
+        "bit_loss_weight": 0.7
+      },
+      "arc_params": {
+        "float_features": [
+          "map_lat",
+          "map_lon",
+          "land_front",
+          "land_depth",
+          "date_end",
+          "bedroom",
+          "washroom",
+          "parking",
+          "seller_price"
+        ],
+        "num_bits": 32,
+        "price_feature_name": "sold_price",
+        "bits_feature_name": "bits"
+      }
+    },
+    "training": {
+      "batch_size": 1024,
+      "epochs": 10000,
+      "learning_rate": 0.001,
+      "early_stopping": {
+        "patience": 100,
+        "verbose": 1,
+        "mode": "min",
+        "restore_best_weights": true
+      }
+    },
+    "datasets": {
+      "train": {
+        "start": "2019-11-01",
+        "end": "2019-12-01"
+      },
+      "dev": {
+        "start": "2019-12-01",
+        "end": "2020-01-01"
+      },
+      "test": {
+        "start": "2020-01-01",
+        "end": "2020-02-01"
+      }
+    }
+  }
+}

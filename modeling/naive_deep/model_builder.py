@@ -99,6 +99,7 @@ class ModelBuilder:
                 self.model_params.arc_params.price_feature_name: sold_price,
                 self.model_params.arc_params.bits_feature_name: sold_price_bits,
             },
+            name="config_model"
         )
 
         return self.model

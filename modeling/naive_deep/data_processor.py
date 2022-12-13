@@ -60,7 +60,7 @@ class DatasetProcessor:
         logging.info(f"Initialization got completed")
 
     def add_preprocessors(self, model: tf.keras.models.Model) -> tf.keras.models.Model:
-        assert isinstance(model.input, dict), "Please use dictionay for defining the input of the model"
+        assert isinstance(model.input, dict), "Please use dictionary for defining the input of the model"
         inputs = {}
 
         for f_name, input_layer in model.input.items():
@@ -70,7 +70,12 @@ class DatasetProcessor:
                 cloned_input = self.preprocessors[f_name](cloned_input)
             inputs[f_name] = cloned_input
 
-        outputs = model(inputs)
+        # we need to explicitly convert model outputs to dict to avoid keras confuse its type is list.
+        inner_model_output = model(inputs)
+        outputs = {
+            name: tf.keras.layers.Lambda(lambda x: x, name=name)(value)
+            for name, value in inner_model_output.items()
+        }
 
-        return tf.keras.models.Model(inputs=inputs, outputs=outputs)
+        return tf.keras.models.Model(inputs=inputs, outputs=outputs, name="normalized_model")
 

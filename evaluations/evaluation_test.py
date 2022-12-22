@@ -2,7 +2,7 @@ from typing import Dict
 
 import pytest
 
-from housing_data_generator.date_model.example import Example
+from housing_data_model.date_model.example import Example
 from housing_model.evaluations.evaluation import PercentageErrorRate
 
 

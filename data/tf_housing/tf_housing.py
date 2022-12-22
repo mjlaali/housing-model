@@ -9,9 +9,9 @@ import tensorflow as tf
 import tensorflow_datasets as tfds
 from tqdm import tqdm
 
-from housing_data_generator.date_model.data import prepare_data
-from housing_data_generator.date_model.example import Example
-from housing_data_generator.date_model.utils import standardize_data, load_from_files
+from housing_data_model.date_model.data import prepare_data
+from housing_data_model.date_model.example import Example
+from housing_data_model.date_model.utils import standardize_data, load_from_files
 from housing_model.data.tf_housing.feature_names import (
     SOLD_PRICE,
     MAP_LAT,

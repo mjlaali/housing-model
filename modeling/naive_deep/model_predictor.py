@@ -4,7 +4,7 @@ from typing import Optional
 import numpy as np
 import tensorflow as tf
 
-from housing_data_generator.date_model.example import Features, Example
+from housing_data_model.date_model.example import Features, Example
 from housing_model.data.tf_housing import TfHousing
 from housing_model.data.tf_housing.feature_names import SOLD_PRICE
 from housing_model.evaluations.house_price_predictor import HousePricePredictor

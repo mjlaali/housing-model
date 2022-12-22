@@ -11,9 +11,9 @@ from typing import Callable, Optional
 import numpy as np
 import tqdm
 
-from housing_data_generator.date_model.data import Data, prepare_data
-from housing_data_generator.date_model.example import Example
-from housing_data_generator.date_model.utils import standardize_data, load_from_files
+from housing_data_model.date_model.data import Data, prepare_data
+from housing_data_model.date_model.example import Example
+from housing_data_model.date_model.utils import standardize_data, load_from_files
 from housing_model.evaluations.house_price_predictor import HousePricePredictor
 from housing_model.modeling.baselines import (
     HouseSigmaHousePricePredictor,

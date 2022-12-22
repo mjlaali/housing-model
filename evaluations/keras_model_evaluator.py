@@ -6,7 +6,7 @@ from pathlib import Path
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
-from housing_data_generator.date_model.example import Example, Features
+from housing_data_model.date_model.example import Example, Features
 from housing_model.data.tf_housing.feature_names import (
     SOLD_PRICE,
     MAP_LAT,

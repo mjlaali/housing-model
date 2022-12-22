@@ -4,4 +4,4 @@ dataclasses-json==0.5.6
 tensorflow==2.11.0
 optuna==3.0.4
 plotly==5.11.0
-
+git+https://github.com/mjlaali/housing_data_model.git@main#egg=housing-data-model
